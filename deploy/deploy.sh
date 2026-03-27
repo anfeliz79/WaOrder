@@ -12,6 +12,11 @@
 #   4. Corre las migraciones de base de datos
 #   5. Reconstruye el caché (más rápido en producción)
 #   6. Reinicia los workers de cola
+#
+# HALLAZGOS DE PRODUCCIÓN (resueltos aquí):
+#   - Git "dubious ownership" cuando root opera un repo clonado por otro user
+#   - Composer advierte cuando se ejecuta como root
+#   - Vite build se cuelga en droplets de 1-2GB sin swap/límite de RAM
 # ═══════════════════════════════════════════════════════════════════════════════
 
 set -e
@@ -23,6 +28,7 @@ NC='\033[0m'
 
 step() { echo -e "\n${GREEN}▸ $1${NC}"; }
 warn() { echo -e "${YELLOW}⚠ $1${NC}"; }
+err()  { echo -e "${RED}✗ $1${NC}"; }
 
 APP_DIR="/var/www/waorder"
 cd "$APP_DIR"
@@ -35,11 +41,21 @@ echo ""
 
 # ── Verificar que existe .env ─────────────────────────────────────────────────
 if [ ! -f .env ]; then
-    echo -e "${RED}✗ No existe el archivo .env${NC}"
+    err "No existe el archivo .env"
     echo "  Copia el template: cp deploy/.env.production .env"
     echo "  Y edita los valores: nano .env"
     exit 1
 fi
+
+# ── HALLAZGO: Git se queja de ownership cuando root opera un dir de otro user ─
+git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+
+# ── HALLAZGO: Composer advierte si corre como root ───────────────────────────
+export COMPOSER_ALLOW_SUPERUSER=1
+
+# ── HALLAZGO: Vite build se cuelga en droplets con poca RAM ─────────────────
+# Limitar Node a 512MB evita que el OOM killer mate el proceso
+export NODE_OPTIONS="--max-old-space-size=512"
 
 # ── Modo mantenimiento (la app muestra 'Volvemos pronto' mientras se actualiza)
 step "Activando modo mantenimiento..."
@@ -54,8 +70,12 @@ step "Instalando dependencias PHP..."
 composer install --no-dev --optimize-autoloader --no-interaction
 
 # ── npm (dependencias JS + compilar frontend) ─────────────────────────────────
-step "Instalando dependencias JS y compilando frontend..."
+step "Instalando dependencias JS..."
 npm ci --production=false
+
+step "Compilando frontend (Vite build)..."
+echo -e "${YELLOW}  ℹ En droplets de 1-2GB esto puede tomar 2-5 minutos. Si se cuelga,"
+echo -e "  verifica que el swap esté activo: swapon --show${NC}"
 npm run build
 
 # ── Migraciones (actualizar tablas de la base de datos) ───────────────────────
