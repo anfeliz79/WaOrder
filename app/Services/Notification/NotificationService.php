@@ -96,13 +96,15 @@ class NotificationService
             return;
         }
 
-        // Create survey response record
-        $survey = SurveyResponse::create([
-            'tenant_id' => $order->tenant_id,
-            'order_id' => $order->id,
-            'customer_id' => $order->customer_id,
-            'customer_phone' => $order->customer_phone,
-        ]);
+        // Create survey response record (skip if already exists for this order)
+        $survey = SurveyResponse::firstOrCreate(
+            ['order_id' => $order->id],
+            [
+                'tenant_id' => $order->tenant_id,
+                'customer_id' => $order->customer_id,
+                'customer_phone' => $order->customer_phone,
+            ],
+        );
 
         // Update or create session in survey state
         $session = ChatSession::where('tenant_id', $order->tenant_id)

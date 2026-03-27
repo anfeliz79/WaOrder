@@ -244,6 +244,13 @@ class DriverAppController extends Controller
             return response()->json([
                 'message' => 'No se puede marcar como entregado desde el estado actual.',
             ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Error marking order as delivered', [
+                'driver_id' => $driver->id,
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['message' => 'Error al marcar el pedido como entregado.'], 500);
         }
     }
 
