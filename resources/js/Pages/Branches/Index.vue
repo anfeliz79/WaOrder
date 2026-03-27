@@ -10,6 +10,7 @@ import AppBadge from '@/Components/AppBadge.vue';
 import AppSwitch from '@/Components/AppSwitch.vue';
 import AppModal from '@/Components/AppModal.vue';
 import AppEmptyState from '@/Components/AppEmptyState.vue';
+import LocationPicker from '@/Components/LocationPicker.vue';
 
 defineOptions({ layout: AdminLayout });
 
@@ -145,14 +146,22 @@ const toggleActive = (branch) => {
         </div>
 
         <!-- Add modal -->
-        <AppModal :show="showAdd" @close="showAdd = false" title="Nueva sucursal">
+        <AppModal :show="showAdd" @close="showAdd = false" title="Nueva sucursal" maxWidth="lg">
             <form @submit.prevent="submitBranch" class="space-y-4">
                 <AppInput v-model="form.name" label="Nombre" :error="form.errors.name" required placeholder="Sucursal Centro" />
                 <AppInput v-model="form.address" label="Direccion" :error="form.errors.address" required placeholder="Calle Principal #123" />
-                <div class="grid grid-cols-2 gap-3">
-                    <AppInput v-model="form.latitude" label="Latitud" :error="form.errors.latitude" type="number" step="any" placeholder="18.4861" />
-                    <AppInput v-model="form.longitude" label="Longitud" :error="form.errors.longitude" type="number" step="any" placeholder="-69.9312" />
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Ubicacion</label>
+                    <LocationPicker
+                        v-model:latitude="form.latitude"
+                        v-model:longitude="form.longitude"
+                        @update:address="(addr) => { if (!form.address) form.address = addr; }"
+                    />
+                    <p v-if="form.errors.latitude" class="mt-1 text-sm text-red-600">{{ form.errors.latitude }}</p>
+                    <p v-if="form.errors.longitude" class="mt-1 text-sm text-red-600">{{ form.errors.longitude }}</p>
                 </div>
+
                 <AppInput v-model="form.phone" label="Telefono" :error="form.errors.phone" placeholder="+1 809 000 0000" />
                 <AppInput v-model="form.max_delivery_distance_km" label="Distancia maxima de delivery (km)" :error="form.errors.max_delivery_distance_km" type="number" step="0.5" min="0.5" required />
 
@@ -164,14 +173,22 @@ const toggleActive = (branch) => {
         </AppModal>
 
         <!-- Edit modal -->
-        <AppModal :show="!!editingBranch" @close="editingBranch = null" title="Editar sucursal">
+        <AppModal :show="!!editingBranch" @close="editingBranch = null" title="Editar sucursal" maxWidth="lg">
             <form @submit.prevent="updateBranch" class="space-y-4">
                 <AppInput v-model="editForm.name" label="Nombre" :error="editForm.errors.name" required />
                 <AppInput v-model="editForm.address" label="Direccion" :error="editForm.errors.address" required />
-                <div class="grid grid-cols-2 gap-3">
-                    <AppInput v-model="editForm.latitude" label="Latitud" :error="editForm.errors.latitude" type="number" step="any" />
-                    <AppInput v-model="editForm.longitude" label="Longitud" :error="editForm.errors.longitude" type="number" step="any" />
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Ubicacion</label>
+                    <LocationPicker
+                        v-model:latitude="editForm.latitude"
+                        v-model:longitude="editForm.longitude"
+                        @update:address="(addr) => { if (!editForm.address) editForm.address = addr; }"
+                    />
+                    <p v-if="editForm.errors.latitude" class="mt-1 text-sm text-red-600">{{ editForm.errors.latitude }}</p>
+                    <p v-if="editForm.errors.longitude" class="mt-1 text-sm text-red-600">{{ editForm.errors.longitude }}</p>
                 </div>
+
                 <AppInput v-model="editForm.phone" label="Telefono" :error="editForm.errors.phone" />
                 <AppInput v-model="editForm.max_delivery_distance_km" label="Distancia maxima de delivery (km)" :error="editForm.errors.max_delivery_distance_km" type="number" step="0.5" min="0.5" required />
 
