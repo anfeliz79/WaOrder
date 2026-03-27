@@ -206,6 +206,7 @@ php artisan waorder:create-admin --email=admin@restaurante.com --password=clave1
 | Login SuperAdmin fallaba | `BelongsToTenant` scope filtraba `tenant_id=NULL` | Fallback query `User::withoutGlobalScope('tenant')` en AuthController |
 | OOM (256MB) al acceder `/superadmin` | `auth()->user()` dentro del scope `BelongsToTenant` → recursión infinita al cargar User | Usar `$guard->hasUser()` que verifica si el user ya está en memoria sin triggerar query |
 | SuperAdmin veía dashboard de tenant | Sesión redirigía a `/dashboard` en vez de `/superadmin` | AuthController verifica `isSuperAdmin()` y redirige correctamente |
+| Toast/flash no visible al guardar settings | `AdminLayout` renderizaba `<AppToast>` pero no conectaba `page.props.flash` al composable `useToast()` | Agregar `watch` sobre `page.props.flash` que dispara `toast.success()`/`toast.error()` |
 
 ## Panel de Sistema (`/system`)
 
@@ -288,6 +289,7 @@ cd /var/www/waorder && bash deploy/deploy.sh
 | `waorder:create-admin` falla con error 1364 | Campos WhatsApp NOT NULL sin valor | Migración ya los hace nullable; si persiste: `ALTER TABLE tenants MODIFY whatsapp_phone_number_id VARCHAR(50) NULL` |
 | Login SuperAdmin falla "credenciales no coinciden" | `BelongsToTenant` scope filtra `tenant_id=NULL` | AuthController hace fallback: `User::withoutGlobalScope('tenant')` para buscar superadmins |
 | OOM 256MB al cargar cualquier página | `auth()->user()` en BelongsToTenant scope → recursión infinita | Usar `$guard->hasUser()` en vez de `auth()->check()` dentro del global scope |
+| Guardar settings no muestra feedback | `AdminLayout` no conectaba `page.props.flash` con `useToast()` | Agregar `watch` en AdminLayout que bridge flash → toast |
 
 ### SSL con Let's Encrypt
 
@@ -324,6 +326,170 @@ Un solo deploy sirve múltiples restaurantes. Para agregar un nuevo restaurante:
 2. Llenar datos del restaurante + admin + sucursal inicial
 3. El admin del restaurante configura WhatsApp desde su panel → Configuración
 4. Los tenants comparten infraestructura — no se necesita otro droplet
+
+## Registro de Bugs Resueltos
+
+Historial cronológico de todos los bugs encontrados y resueltos durante el desarrollo y deploy de WaOrder.
+
+### Bug #1: Login SuperAdmin — "Las credenciales no coinciden" (commit `d591bcc`)
+
+**Contexto**: Al intentar logear con un usuario SuperAdmin (`tenant_id = NULL`), el login siempre fallaba con "Las credenciales no coinciden".
+
+**Causa raíz**: El trait `BelongsToTenant` añade un global scope al modelo `User` que filtra por `tenant_id`. Cuando `Auth::attempt()` busca el usuario por email, el scope automáticamente añade `WHERE tenant_id = ?` pero como el SuperAdmin tiene `tenant_id = NULL`, nunca lo encuentra.
+
+**Solución**: Modificar `AuthController@login` para hacer un fallback cuando `Auth::attempt()` falla — buscar explícitamente un SuperAdmin sin el scope:
+
+```php
+// En app/Http/Controllers/Api/AuthController.php
+if (!Auth::attempt($credentials, $request->boolean('remember'))) {
+    $superAdmin = User::withoutGlobalScope('tenant')
+        ->where('email', $credentials['email'])
+        ->where('role', 'superadmin')
+        ->first();
+
+    if ($superAdmin && Hash::check($credentials['password'], $superAdmin->password)) {
+        Auth::login($superAdmin, $request->boolean('remember'));
+    } else {
+        return back()->withErrors(['email' => 'Las credenciales no coinciden.']);
+    }
+}
+```
+
+**Archivos modificados**: `app/Http/Controllers/Api/AuthController.php`
+
+---
+
+### Bug #2: OOM 256MB — Recursión infinita en BelongsToTenant (commit `5c31923`)
+
+**Contexto**: Después de hacer login como SuperAdmin (o cualquier usuario), al acceder a cualquier página el servidor devolvía 500 con `Allowed memory size of 268435456 bytes exhausted`.
+
+**Causa raíz**: Dentro del global scope de `BelongsToTenant`, se usaba `auth()->user()` para verificar si el usuario era SuperAdmin. Pero `auth()->user()` ejecuta una query SQL para cargar el modelo `User`. Como `User` también usa el trait `BelongsToTenant`, el scope se dispara de nuevo → llama `auth()->user()` de nuevo → scope de nuevo → **recursión infinita** hasta OOM.
+
+```
+BelongsToTenant scope → auth()->user() → SELECT * FROM users WHERE...
+  → BelongsToTenant scope → auth()->user() → SELECT * FROM users WHERE...
+    → BelongsToTenant scope → auth()->user() → ... → OOM
+```
+
+**Solución**: Reemplazar `auth()->user()` con `$guard->hasUser()` que solo verifica si el usuario ya está resuelto **en memoria** sin disparar una nueva query:
+
+```php
+// En app/Models/Concerns/BelongsToTenant.php
+static::addGlobalScope('tenant', function (Builder $builder) {
+    $guard = auth()->guard();
+    // hasUser() NO hace query — solo verifica si el user ya está en memoria
+    if ($guard->hasUser() && $guard->user()->isSuperAdmin()) {
+        return; // SuperAdmin bypassa el scope
+    }
+    if (app()->bound('tenant') && app('tenant')) {
+        $builder->where($builder->getModel()->getTable() . '.tenant_id', app('tenant')->id);
+    }
+});
+```
+
+**Regla crítica**: **NUNCA** usar `auth()->user()`, `auth()->check()`, o `Auth::user()` dentro de un global scope en un modelo que tenga ese mismo scope. Siempre usar `auth()->guard()->hasUser()`.
+
+**Archivos modificados**: `app/Models/Concerns/BelongsToTenant.php`
+
+---
+
+### Bug #3: Flash messages invisibles al guardar Settings (commit `c49ecc3`)
+
+**Contexto**: Al guardar configuraciones en Configuración → Menú (o cualquier otra pestaña), el botón "Guardar" no mostraba ningún feedback visual. Los datos sí se guardaban correctamente en la base de datos, pero el usuario no recibía confirmación.
+
+**Causa raíz**: El `AdminLayout.vue` renderizaba el componente `<AppToast />` para mostrar notificaciones toast, pero **nunca conectaba** los flash messages de Inertia (`page.props.flash.success/error`) al sistema de toasts (`useToast()` composable).
+
+La cadena estaba rota:
+```
+Backend: return back()->with('success', 'Configuración actualizada')
+    ↓
+Inertia: page.props.flash.success = 'Configuración actualizada'
+    ↓ ← AQUÍ SE ROMPÍA — nadie leía este valor
+AppToast: useToast().toasts = [] ← siempre vacío
+```
+
+**Solución**: Agregar un `watch` en `AdminLayout.vue` que observe los flash props de Inertia y los envíe al sistema de toasts:
+
+```javascript
+// En resources/js/Layouts/AdminLayout.vue
+import { ref, computed, watch } from 'vue';
+import { useToast } from '@/Composables/useToast';
+
+const page = usePage();
+const toast = useToast();
+
+watch(() => page.props.flash, (flash) => {
+    if (flash?.success) {
+        toast.success(flash.success);
+    }
+    if (flash?.error) {
+        toast.error(flash.error);
+    }
+}, { deep: true, immediate: true });
+```
+
+**Nota**: El `SuperAdminLayout.vue` ya tenía su propio manejo de flash messages (con divs inline en vez de toasts), por lo que no tenía este problema.
+
+**Archivos modificados**: `resources/js/Layouts/AdminLayout.vue`
+
+---
+
+### Bug #4: Roles incorrectos — Admin y SuperAdmin confundidos
+
+**Contexto**: Después de crear el SuperAdmin con `waorder:create-admin --super`, el usuario admin del tenant (user ID 1) también quedó con `role = superadmin`, causando que viera el dashboard de SuperAdmin en vez del de su restaurante.
+
+**Causa raíz**: El comando `waorder:create-admin --super` modificaba el usuario existente en vez de crear uno nuevo cuando el email coincidía. El user ID 1 (admin del tenant) fue convertido a SuperAdmin accidentalmente.
+
+**Solución**: Corregir manualmente via tinker:
+
+```php
+php artisan tinker
+$user = User::withoutGlobalScope('tenant')->find(1);
+$user->update(['role' => 'admin', 'tenant_id' => 1]);
+```
+
+**Lección**: Siempre verificar el estado de los roles después de ejecutar comandos de creación de usuarios. Los 3 roles del sistema y sus `tenant_id` esperados:
+
+| Rol | tenant_id |
+|-----|-----------|
+| `superadmin` | `NULL` |
+| `admin` | FK a tenants (nunca NULL) |
+| `gestor` | FK a tenants (nunca NULL) |
+
+---
+
+### Bug #5: Método isSuperAdmin() duplicado en User model
+
+**Contexto**: Error de PHP `Cannot redeclare App\Models\User::isSuperAdmin()` al intentar cargar la aplicación.
+
+**Causa raíz**: Un agente añadió el método `isSuperAdmin()` al modelo `User` sin verificar que ya existía. PHP no permite métodos duplicados.
+
+**Solución**: Eliminar la declaración duplicada del método.
+
+**Lección**: Siempre buscar si un método ya existe antes de añadirlo a un modelo.
+
+**Archivos modificados**: `app/Models/User.php`
+
+---
+
+### Bug #6: Credenciales API externa rechazadas (401 Unauthorized)
+
+**Contexto**: Al configurar la API externa de Yokomo Sushi en Settings → Menú, las primeras credenciales (api_key + api_secret) devolvían 401.
+
+**Causa raíz**: Las credenciales iniciales proporcionadas por SelfOrder eran inválidas o habían expirado.
+
+**Solución**: Regenerar las credenciales desde el panel de SelfOrder. Las nuevas credenciales funcionaron correctamente (200 OK, 68 productos).
+
+**Verificación**:
+```bash
+curl -s -o /dev/null -w "%{http_code}" \
+  -H "X-Api-Key: cat_jze8w6rbfqpbbhfwcfby0nobmcgvpebuiwl4" \
+  -H "X-Api-Secret: sec_5qPdLWiUCo7vuQT0PV7reaPvZM8wRJlJeWmNzugKxe5q6CsNrziWlDDMPkcDcZiT" \
+  "https://selforder.yokomosushi.com/integrations/catalog/products"
+# Respuesta: 200
+```
+
+---
 
 ## Notas Importantes
 
