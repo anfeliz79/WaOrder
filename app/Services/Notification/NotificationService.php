@@ -54,10 +54,8 @@ class NotificationService
 
         $buttons = null;
         if ($driver) {
-            $phone = preg_replace('/[^0-9]/', '', $driver->phone);
             $buttons = [
                 ['id' => "contact_driver_{$order->id}", 'title' => '📞 Contactar Delivery'],
-                ['id' => "track_{$order->id}", 'title' => '📍 Ver estado'],
             ];
         }
 

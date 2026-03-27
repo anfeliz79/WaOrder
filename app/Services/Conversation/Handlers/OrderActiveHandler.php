@@ -67,6 +67,16 @@ class OrderActiveHandler implements HandlerInterface
             return $this->showOrderStatus($order);
         }
 
+        // Handle "contact driver" button from out_for_delivery notification
+        if (str_starts_with($messageLower, 'contact_driver_')) {
+            return $this->handleContactDriver($order);
+        }
+
+        // Handle "track" button from out_for_delivery notification (same as status check)
+        if (str_starts_with($messageLower, 'track_')) {
+            return $this->showOrderStatus($order);
+        }
+
         // Default: show status with options
         return $this->showOrderStatus($order);
     }
@@ -183,6 +193,27 @@ class OrderActiveHandler implements HandlerInterface
 
             return $result;
         }
+    }
+
+    private function handleContactDriver(Order $order): array
+    {
+        $order->loadMissing('driver');
+        $driver = $order->driver;
+
+        if (!$driver) {
+            return $this->showOrderStatus($order);
+        }
+
+        $phone = preg_replace('/[^0-9]/', '', $driver->phone);
+        $waLink = "https://wa.me/{$phone}";
+
+        return [
+            'response' => "\xF0\x9F\x9B\xB5 *{$driver->name}* esta llevando tu pedido.\n\n\xF0\x9F\x93\x9E Puedes contactarlo aqui:",
+            'response_type' => 'cta_url',
+            'cta_body' => "\xF0\x9F\x9B\xB5 *{$driver->name}* esta llevando tu pedido.",
+            'cta_button_text' => 'Contactar mensajero',
+            'cta_url' => $waLink,
+        ];
     }
 
     private function buildCallCta(): ?array
