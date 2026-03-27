@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import {
     Dialog,
@@ -29,10 +29,22 @@ import {
     ChevronsUpDown,
 } from 'lucide-vue-next';
 import AppToast from '@/Components/AppToast.vue';
+import { useToast } from '@/Composables/useToast';
 import { getInitials, getAvatarColor } from '@/Utils/formatters';
 import { useOrderNotification } from '@/Composables/useOrderNotification';
 
 const page = usePage();
+const toast = useToast();
+
+// Watch Inertia flash messages and pipe them into the toast system
+watch(() => page.props.flash, (flash) => {
+    if (flash?.success) {
+        toast.success(flash.success);
+    }
+    if (flash?.error) {
+        toast.error(flash.error);
+    }
+}, { deep: true, immediate: true });
 useOrderNotification();
 const user = computed(() => page.props.auth?.user);
 const branches = computed(() => page.props.auth?.branches || []);
