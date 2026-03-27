@@ -11,9 +11,9 @@ return new class extends Migration {
             $table->id();
             $table->string('name');
             $table->string('slug', 100)->unique();
-            $table->string('whatsapp_phone_number_id', 50);
-            $table->string('whatsapp_business_account_id', 50);
-            $table->text('whatsapp_access_token'); // encrypted
+            $table->string('whatsapp_phone_number_id', 50)->nullable();
+            $table->string('whatsapp_business_account_id', 50)->nullable();
+            $table->text('whatsapp_access_token')->nullable(); // encrypted
             $table->string('timezone', 50)->default('America/Santo_Domingo');
             $table->string('currency', 3)->default('DOP');
             $table->string('locale', 5)->default('es');

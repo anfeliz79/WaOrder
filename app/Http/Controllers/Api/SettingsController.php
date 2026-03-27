@@ -27,6 +27,8 @@ class SettingsController extends Controller
                 'webhook_url' => url('/webhook/whatsapp'),
             ],
             'hasAiKey' => (bool) $tenant->ai_api_key,
+            'hasWhatsAppToken' => (bool) $tenant->whatsapp_access_token,
+            'hasWhatsAppAppSecret' => (bool) $tenant->whatsapp_app_secret,
         ]);
     }
 
@@ -40,6 +42,7 @@ class SettingsController extends Controller
             'whatsapp_phone_number_id' => 'sometimes|string|max:50',
             'whatsapp_business_account_id' => 'sometimes|string|max:50',
             'whatsapp_access_token' => 'sometimes|string|max:500',
+            'whatsapp_app_secret' => 'sometimes|string|max:500',
             'settings' => 'sometimes|array',
             'settings.delivery_fee' => 'nullable|numeric|min:0',
             'settings.min_order' => 'nullable|numeric|min:0',

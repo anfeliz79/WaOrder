@@ -9,13 +9,18 @@ class Tenant extends Model
 {
     protected $fillable = [
         'name', 'slug', 'whatsapp_phone_number_id', 'whatsapp_business_account_id',
-        'whatsapp_access_token', 'ai_api_key', 'timezone', 'currency', 'locale', 'settings',
+        'whatsapp_access_token', 'whatsapp_app_secret', 'ai_api_key', 'timezone', 'currency', 'locale', 'settings',
         'subscription_plan', 'subscription_expires_at', 'is_active',
+    ];
+
+    protected $hidden = [
+        'whatsapp_access_token', 'whatsapp_app_secret', 'ai_api_key',
     ];
 
     protected $casts = [
         'settings' => 'array',
         'whatsapp_access_token' => 'encrypted',
+        'whatsapp_app_secret' => 'encrypted',
         'ai_api_key' => 'encrypted',
         'subscription_expires_at' => 'datetime',
         'is_active' => 'boolean',

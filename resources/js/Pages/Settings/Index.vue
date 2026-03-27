@@ -11,6 +11,9 @@ defineOptions({ layout: AdminLayout });
 const props = defineProps({
     tenant: Object,
     whatsappConfig: Object,
+    hasWhatsAppToken: Boolean,
+    hasWhatsAppAppSecret: Boolean,
+    hasAiKey: Boolean,
 });
 
 const activeTab = ref('general');
@@ -31,10 +34,13 @@ const whatsappForm = useForm({
     whatsapp_phone_number_id: props.tenant?.whatsapp_phone_number_id || '',
     whatsapp_business_account_id: props.tenant?.whatsapp_business_account_id || '',
     whatsapp_access_token: '',
+    whatsapp_app_secret: '',
 });
 
 const showToken = ref(false);
-const hasExistingToken = ref(!!props.tenant?.whatsapp_access_token);
+const showAppSecret = ref(false);
+const hasExistingToken = ref(!!props.hasWhatsAppToken);
+const hasExistingAppSecret = ref(!!props.hasWhatsAppAppSecret);
 const testResult = ref(null);
 const testing = ref(false);
 
@@ -157,16 +163,17 @@ const saveGeneral = () => {
 };
 
 const saveWhatsApp = () => {
-    // Remove empty token so we don't overwrite existing one with blank
+    // Remove empty secrets so we don't overwrite existing ones with blank
     const hadToken = !!whatsappForm.whatsapp_access_token;
-    if (!hadToken) {
-        whatsappForm.transform((data) => {
-            const { whatsapp_access_token, ...rest } = data;
-            return rest;
-        });
-    } else {
-        whatsappForm.transform((data) => data);
-    }
+    const hadAppSecret = !!whatsappForm.whatsapp_app_secret;
+
+    whatsappForm.transform((data) => {
+        const result = { ...data };
+        if (!hadToken) delete result.whatsapp_access_token;
+        if (!hadAppSecret) delete result.whatsapp_app_secret;
+        return result;
+    });
+
     whatsappForm.put('/settings', {
         preserveScroll: true,
         onSuccess: () => {
@@ -174,6 +181,11 @@ const saveWhatsApp = () => {
                 hasExistingToken.value = true;
                 whatsappForm.whatsapp_access_token = '';
                 showToken.value = false;
+            }
+            if (hadAppSecret) {
+                hasExistingAppSecret.value = true;
+                whatsappForm.whatsapp_app_secret = '';
+                showAppSecret.value = false;
             }
         },
     });
@@ -750,6 +762,21 @@ const previewName = computed(() => props.tenant?.name || 'Mi Restaurante');
                         </div>
                         <p v-if="hasExistingToken" class="text-xs text-green-600 mt-1">Ya hay un token configurado. Solo ingresa uno nuevo si deseas reemplazarlo.</p>
                         <p v-else class="text-xs text-amber-600 mt-1">No hay token configurado. Genera uno en Meta Developer Portal.</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">App Secret</label>
+                        <div class="relative">
+                            <input v-model="whatsappForm.whatsapp_app_secret"
+                                   :type="showAppSecret ? 'text' : 'password'"
+                                   :placeholder="hasExistingAppSecret ? 'Secret guardado - deja vacio para mantener el actual' : 'Pega tu App Secret aqui'"
+                                   class="w-full px-3 py-2 border rounded-lg pr-20" />
+                            <button type="button" @click="showAppSecret = !showAppSecret"
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-gray-700 px-2 py-1">
+                                {{ showAppSecret ? 'Ocultar' : 'Mostrar' }}
+                            </button>
+                        </div>
+                        <p v-if="hasExistingAppSecret" class="text-xs text-green-600 mt-1">App Secret configurado. Solo ingresa uno nuevo si deseas reemplazarlo.</p>
+                        <p v-else class="text-xs text-amber-600 mt-1">Requerido para validar webhooks. Se encuentra en Meta Developer Portal > Settings > Basic > App Secret.</p>
                     </div>
 
                     <div class="flex items-center gap-3">
