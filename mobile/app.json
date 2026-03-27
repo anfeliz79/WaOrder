@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "WaOrder Delivery",
+    "slug": "waorder-delivery",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ea580c"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.waorder.delivery",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Necesitamos la camara para escanear el QR de vinculacion",
+        "NSLocationWhenInUseUsageDescription": "Para navegar a las direcciones de entrega",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.waorder.delivery",
+      "adaptiveIcon": {
+        "backgroundColor": "#ea580c",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "CAMERA",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Necesitamos la camara para escanear el QR de vinculacion"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#ea580c"
+        }
+      ],
+      "expo-asset",
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "41808114-4bc0-4e29-a664-9f0cc2d867e5"
+      }
+    },
+    "owner": "anfeliz79"
+  }
+}
