@@ -491,6 +491,106 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 ---
 
+### Bug #7: Driver app — "Server Error" al marcar entregado (commit `87680c1`)
+
+**Contexto**: El botón "Marcar Entregado" en la app móvil de delivery devolvía Server Error en producción.
+
+**Causa raíz**: `order_status_history.changed_by_type` era `ENUM('system', 'staff', 'customer')`. Tanto `DriverAppController` como `DriverMessageHandler` pasan `'driver'` como valor, causando una violación de constraint en MySQL al insertar el historial de estado.
+
+**Solución**: Migración que agrega `'driver'` al enum:
+```php
+DB::statement("ALTER TABLE order_status_history MODIFY COLUMN changed_by_type ENUM('system', 'staff', 'customer', 'driver') NOT NULL DEFAULT 'system'");
+```
+
+**Archivos modificados**: `database/migrations/2026_03_27_220000_add_driver_to_order_status_history_changed_by_type.php`
+
+---
+
+### Bug #8: BelongsToTenant scope llama isSuperAdmin() sobre Driver model (commit `8fa2986`)
+
+**Contexto**: Toda request de la app de delivery fallaba con `BadMethodCallException: Call to undefined method App\Models\Driver::isSuperAdmin()`.
+
+**Causa raíz**: El global scope de `BelongsToTenant` hace `auth()->guard()->user()->isSuperAdmin()` para verificar si el usuario es SuperAdmin y debe bypassar el scope. Cuando un driver se autentica vía Sanctum Bearer token, `auth()->guard()->user()` retorna una instancia de `Driver` (no `User`). El modelo `Driver` no tiene el método `isSuperAdmin()` → `BadMethodCallException`.
+
+La cadena exacta:
+```
+Driver hace request con Bearer token
+→ Sanctum resuelve token → tokenable = Driver
+→ auth()->guard()->user() retorna Driver
+→ BelongsToTenant scope llama Driver::isSuperAdmin() → crash
+```
+
+**Solución**: Verificar `instanceof User` antes de llamar `isSuperAdmin()`:
+
+```php
+// En app/Models/Concerns/BelongsToTenant.php
+$guard = auth()->guard();
+if ($guard->hasUser()) {
+    $authUser = $guard->user();
+    // Solo User tiene isSuperAdmin() — Driver no lo tiene
+    if ($authUser instanceof \App\Models\User && $authUser->isSuperAdmin()) {
+        return;
+    }
+}
+```
+
+**Regla crítica**: El trait `BelongsToTenant` es usado por `User`, `Order`, `Driver`, `ChatSession`, `MenuItem` y otros modelos. Cualquier lógica dentro del global scope debe ser **type-safe** — nunca asumir que `auth()->guard()->user()` retorna un `User`. Puede retornar cualquier modelo `Authenticatable` (`Driver`, etc.).
+
+**Archivos modificados**: `app/Models/Concerns/BelongsToTenant.php`
+
+---
+
+### Bug #9: Múltiples mensajes "en camino" enviados al cliente (commit `9841d72`)
+
+**Contexto**: El bot de WhatsApp enviaba varios mensajes al cliente diciendo que el pedido iba en camino, sin que el cliente hiciera nada.
+
+**Causa raíz**: La notificación `sendOutForDelivery` enviaba al cliente un mensaje con dos botones: "📞 Contactar Delivery" (`contact_driver_{id}`) y "📍 Ver estado" (`track_{id}`). Ninguno de esos IDs tenía handler en `OrderActiveHandler`. Al presionar cualquier botón, el handler caía al `default: showOrderStatus()` → enviaba otro mensaje de "en camino". El cliente podía acumular N mensajes simplemente tocando los botones.
+
+```
+Mensaje proactivo: "🛵 En camino" [botón: Contactar Delivery | Ver estado]
+  ↓ cliente presiona "Contactar Delivery"
+  → OrderActiveHandler no reconoce contact_driver_13
+  → default: showOrderStatus() → "🛵 En camino" (2do mensaje)
+  ↓ cliente presiona "Actualizar estado"
+  → showOrderStatus() → "🛵 En camino" (3er mensaje)
+```
+
+**Solución**:
+1. Handler explícito para `contact_driver_*` → retorna CTA con WhatsApp del mensajero
+2. Handler explícito para `track_*` → enruta a `showOrderStatus()` correctamente
+3. Eliminado el botón "📍 Ver estado" de la notificación (redundante y confuso)
+
+**Archivos modificados**: `app/Services/Conversation/Handlers/OrderActiveHandler.php`, `app/Services/Notification/NotificationService.php`
+
+---
+
+### Bug #10: deploy.sh — git pull silencioso + sin reinicio de PHP-FPM (commit `9e21859`)
+
+**Contexto**: Después de hacer deploy, el código nuevo no aplicaba en producción y la migración no corría. Al ejecutar migrate manualmente decía "Nothing to migrate" pero el error persistía.
+
+**Causas**:
+1. `git pull origin main || warn "..."` — si el pull fallaba (conflicto, credenciales, etc.), el script continuaba con código viejo sin error. Las nuevas migraciones nunca llegaban.
+2. No había `systemctl restart php8.4-fpm` — PHP OPcache servía bytecode viejo incluso después de actualizar los archivos en disco.
+
+**Solución**:
+```bash
+# ANTES (inseguro):
+git pull origin main 2>/dev/null || warn "No se pudo hacer git pull"
+
+# AHORA (falla si falla):
+git fetch origin
+git reset --hard origin/main || { err "No se pudo actualizar"; exit 1; }
+
+# AÑADIDO después de reconstruir caches:
+systemctl restart php8.4-fpm
+```
+
+**Regla**: Siempre usar `git fetch + reset --hard` en deploys automatizados. `git pull` puede fallar silenciosamente en conflictos. El reinicio de PHP-FPM es **obligatorio** si OPcache está activo (producción siempre lo tiene).
+
+**Archivos modificados**: `deploy/deploy.sh`
+
+---
+
 ## Notas Importantes
 
 - `Tenant.whatsapp_access_token` está **encriptado** en DB — usar `tenant->decryptedToken()` para acceder.
@@ -501,4 +601,6 @@ curl -s -o /dev/null -w "%{http_code}" \
 - Gestors solo ven pedidos de su sucursal asignada (filtro via `ResolveBranch` middleware + `session('branch_id')`).
 - Menu interno se cachea 10 minutos. Para forzar refresh: `php artisan cache:clear`.
 - **CRÍTICO — BelongsToTenant scope**: **Nunca** usar `auth()->user()` o `auth()->check()` dentro del global scope de `BelongsToTenant`. Causa recursión infinita (el User model tiene el mismo trait → query infinita → OOM). Usar `auth()->guard()->hasUser()` que solo verifica si el user ya está cargado en memoria.
+- **CRÍTICO — BelongsToTenant scope (Driver)**: Dentro del scope, `auth()->guard()->user()` puede retornar `Driver` (no `User`) cuando la request viene de la app de delivery. Siempre verificar `instanceof \App\Models\User` antes de llamar métodos exclusivos de User como `isSuperAdmin()`.
 - **SuperAdmin tiene `tenant_id = NULL`**: El login estándar no lo encuentra porque el scope filtra por tenant. El `AuthController` hace un fallback explícito buscando sin scope.
+- **Deploy**: Usar `git fetch + reset --hard` (no `git pull`). Siempre reiniciar PHP-FPM después del deploy para limpiar OPcache: `systemctl restart php8.4-fpm`.
