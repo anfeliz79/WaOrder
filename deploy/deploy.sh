@@ -63,7 +63,8 @@ php artisan down --retry=30 2>/dev/null || true
 
 # ── Git pull ──────────────────────────────────────────────────────────────────
 step "Bajando últimos cambios de Git..."
-git pull origin main 2>/dev/null || git pull origin master 2>/dev/null || warn "No se pudo hacer git pull (¿rama correcta?)"
+git fetch origin
+git reset --hard origin/main 2>/dev/null || git reset --hard origin/master 2>/dev/null || { err "No se pudo actualizar el código desde Git"; exit 1; }
 
 # ── Composer (dependencias PHP) ───────────────────────────────────────────────
 step "Instalando dependencias PHP..."
@@ -94,6 +95,10 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 php artisan event:cache
+
+# ── Reiniciar PHP-FPM (limpia OPcache — CRÍTICO para que el nuevo código aplique)
+step "Reiniciando PHP-FPM..."
+systemctl restart php8.4-fpm || systemctl restart php8.3-fpm || warn "No se pudo reiniciar PHP-FPM (verifica el servicio)"
 
 # ── Reiniciar workers ─────────────────────────────────────────────────────────
 step "Reiniciando workers de cola..."
