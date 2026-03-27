@@ -107,14 +107,22 @@ class CartReviewHandler implements HandlerInterface
 
             $info = $session->collected_info ?? [];
 
-            // Determine what info we still need
-            if (empty($info['name'])) {
+            // Determine what info we still need.
+            // Fall back to customer.name from previous orders if not in collected_info.
+            $customerName = $info['name'] ?? $session->customer?->name;
+
+            if (empty($customerName)) {
                 return [
                     'response' => 'Como te llamas?',
                     'response_type' => 'text',
                     'next_state' => 'collecting_info',
                     'context_data' => array_merge($session->context_data ?? [], ['awaiting_field' => 'name']),
                 ];
+            }
+
+            // Name is known — pre-fill from Customer record if collected_info was wiped
+            if (empty($info['name'])) {
+                $info['name'] = $customerName;
             }
 
             return [
@@ -125,6 +133,7 @@ class CartReviewHandler implements HandlerInterface
                     ['id' => 'info_pickup', 'title' => 'Pickup'],
                 ],
                 'next_state' => 'collecting_info',
+                'collected_info' => $info,
                 'context_data' => array_merge($session->context_data ?? [], ['awaiting_field' => 'delivery_type']),
             ];
         }

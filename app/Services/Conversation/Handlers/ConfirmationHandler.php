@@ -72,11 +72,19 @@ class ConfirmationHandler implements HandlerInterface
 
         // Cancel (button ID or text)
         if (in_array($lower, ['confirm_cancel', '3', 'cancelar', 'no'])) {
+            // Preserve the customer name so it doesn't get re-asked on the next order within the same session
+            $currentInfo = $session->collected_info ?? [];
             return [
                 'response' => "Pedido cancelado. Escribe cuando quieras pedir de nuevo.",
                 'next_state' => 'greeting',
                 'cart_data' => ['items' => [], 'subtotal' => 0, 'delivery_fee' => 0, 'total' => 0],
-                'collected_info' => ['name' => null, 'address' => null, 'delivery_type' => null, 'payment_method' => null, 'notes' => null],
+                'collected_info' => [
+                    'name' => $currentInfo['name'] ?? null,
+                    'address' => null,
+                    'delivery_type' => null,
+                    'payment_method' => null,
+                    'notes' => null,
+                ],
             ];
         }
 

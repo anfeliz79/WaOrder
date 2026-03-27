@@ -104,6 +104,16 @@ class NotificationService
             ],
         );
 
+        // If the survey record already existed, the notification was already dispatched before.
+        // This guard prevents duplicate messages from double-taps or job retries.
+        if (!$survey->wasRecentlyCreated) {
+            Log::info('Delivery survey notification already dispatched for this order — skipping duplicate', [
+                'order_id' => $order->id,
+                'survey_id' => $survey->id,
+            ]);
+            return;
+        }
+
         // Update or create session in survey state
         $session = ChatSession::where('tenant_id', $order->tenant_id)
             ->where('customer_phone', $order->customer_phone)
