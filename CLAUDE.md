@@ -591,6 +591,85 @@ systemctl restart php8.4-fpm
 
 ---
 
+### Bug #11: Mensaje de encuesta enviado duplicado al cliente al marcar entregado (commit `4b09cd7`)
+
+**Contexto**: Al marcar un pedido como entregado, el cliente recibía el mensaje de encuesta más de una vez. El usuario reportó: "el bot me escribió sin yo escribirle, basado en una sesión ya cerrada."
+
+**Causa raíz**: `NotificationService.sendDeliveryWithSurvey()` siempre despachaba `SendWhatsAppNotification::dispatch()`, incluso cuando el `SurveyResponse` ya existía (llamada duplicada por doble-tap en la app de delivery, o reintento del job al fallar). El `SendWhatsAppNotification` tiene `tries = 3`, y sin guardia de idempotencia, cada reintento enviaba el mismo mensaje de nuevo.
+
+```php
+// ANTES (sin guardia):
+$survey = SurveyResponse::firstOrCreate(['order_id' => $order->id], [...]);
+// ...
+SendWhatsAppNotification::dispatch(...); // ← siempre enviaba, aunque $survey ya existiera
+
+// AHORA (con guardia wasRecentlyCreated):
+$survey = SurveyResponse::firstOrCreate(['order_id' => $order->id], [...]);
+
+if (!$survey->wasRecentlyCreated) {
+    Log::info('Delivery survey notification already dispatched — skipping duplicate');
+    return; // ← no envía si la encuesta ya existía
+}
+// ...
+SendWhatsAppNotification::dispatch(...);
+```
+
+**Por qué `wasRecentlyCreated`**: El método de Eloquent `wasRecentlyCreated` es `true` únicamente si el `firstOrCreate` acaba de **crear** el registro en esta invocación. Si el registro ya existía (llamada duplicada), es `false` → saltar.
+
+**Archivos modificados**: `app/Services/Notification/NotificationService.php`
+
+---
+
+### Bug #12: Bot volvía a preguntar el nombre del cliente aunque ya lo conocía (commit `4b09cd7`)
+
+**Contexto**: Al pedir por segunda vez (nueva sesión o dentro de la misma sesión después de cancelar), el bot preguntaba "¿Cómo te llamas?" aunque el nombre ya estaba guardado en el registro de `Customer`.
+
+**Causas (dos rutas)**:
+
+1. **Dentro de la misma sesión, después de cancelar en la confirmación**: `ConfirmationHandler` reseteaba `collected_info.name` a `null` al cancelar. En el siguiente intento, `CartReviewHandler` veía `empty($info['name'])` = `true` y volvía a preguntar, ignorando el `Customer.name`.
+
+2. **Fallback no implementado en `CartReviewHandler`**: Solo verificaba `collected_info.name` y no caía al `$session->customer?->name` (que `OrderFactory` persiste en el modelo `Customer` al crear cada pedido).
+
+**Solución**:
+
+```php
+// CartReviewHandler — checkout hacia collecting_info:
+$customerName = $info['name'] ?? $session->customer?->name; // ← fallback al Customer
+
+if (empty($customerName)) {
+    // Solo pregunta si de verdad no hay nombre guardado
+    return ['response' => 'Como te llamas?', 'next_state' => 'collecting_info', ...];
+}
+
+// Pre-rellena collected_info si llegó vacío (ej. cancelación previa)
+if (empty($info['name'])) {
+    $info['name'] = $customerName;
+}
+
+return [
+    'response' => 'Como deseas recibir tu pedido?',
+    'next_state' => 'collecting_info',
+    'collected_info' => $info,  // ← se incluye para persistir el nombre
+    'context_data' => [..., 'awaiting_field' => 'delivery_type'],
+];
+
+// ConfirmationHandler — cancel preserva el nombre:
+$currentInfo = $session->collected_info ?? [];
+'collected_info' => [
+    'name' => $currentInfo['name'] ?? null,  // ← antes era null hardcodeado
+    'address' => null, 'delivery_type' => null, ...
+],
+```
+
+**Flujo completo cuando el nombre ya se conoce**:
+1. `SessionManager::create()` inicializa `collected_info.name = $customer->name` (si existe)
+2. `CartReviewHandler` detecta nombre no vacío → salta directo a preguntar tipo de entrega
+3. `CollectingInfoHandler` recibe `awaiting_field = 'delivery_type'` → no pregunta nombre
+
+**Archivos modificados**: `app/Services/Conversation/Handlers/CartReviewHandler.php`, `app/Services/Conversation/Handlers/ConfirmationHandler.php`
+
+---
+
 ## Notas Importantes
 
 - `Tenant.whatsapp_access_token` está **encriptado** en DB — usar `tenant->decryptedToken()` para acceder.
