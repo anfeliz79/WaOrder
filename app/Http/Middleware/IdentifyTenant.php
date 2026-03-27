@@ -11,6 +11,11 @@ class IdentifyTenant
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // SuperAdmin doesn't need tenant context
+        if ($request->user()?->isSuperAdmin()) {
+            return $next($request);
+        }
+
         $tenant = null;
 
         // From authenticated user's session

@@ -198,6 +198,7 @@ cd /var/www/waorder && bash deploy/deploy.sh
 | Composer warning como root | Composer detecta root | `export COMPOSER_ALLOW_SUPERUSER=1` |
 | `php artisan key:generate` falla | No hay vendor/ | Ejecutar `composer install` primero |
 | Login sin credenciales | No se creó admin | `php artisan waorder:create-admin` |
+| `waorder:create-admin` falla con error 1364 | Campos WhatsApp NOT NULL sin valor | `ALTER TABLE tenants MODIFY whatsapp_phone_number_id VARCHAR(50) NULL, MODIFY whatsapp_business_account_id VARCHAR(50) NULL, MODIFY whatsapp_access_token TEXT NULL;` en MySQL, luego re-ejecutar el comando |
 
 ### SSL con Let's Encrypt
 

@@ -12,12 +12,51 @@ class CreateAdminUser extends Command
     protected $signature = 'waorder:create-admin
                             {--email=argenis1989@gmail.com : Email del admin}
                             {--password=WaOrder2026! : Contraseña}
-                            {--name=Aneurys Feliz : Nombre}';
+                            {--name=Aneurys Feliz : Nombre}
+                            {--super : Crear como Super Admin (sin tenant)}';
 
     protected $description = 'Crear tenant inicial y usuario admin';
 
     public function handle(): int
     {
+        $email    = $this->option('email');
+        $password = $this->option('password');
+        $name     = $this->option('name');
+
+        // SuperAdmin mode: no tenant needed
+        if ($this->option('super')) {
+            $user = User::withoutGlobalScopes()->where('email', $email)->first();
+
+            if ($user) {
+                $user->update([
+                    'password'  => Hash::make($password),
+                    'role'      => 'superadmin',
+                    'tenant_id' => null,
+                ]);
+                $this->warn("Super Admin actualizado (ya existía).");
+            } else {
+                $user = User::withoutGlobalScopes()->create([
+                    'name'      => $name,
+                    'email'     => $email,
+                    'password'  => Hash::make($password),
+                    'role'      => 'superadmin',
+                    'tenant_id' => null,
+                ]);
+                $this->info("Super Admin creado.");
+            }
+
+            $this->newLine();
+            $this->table(['Campo', 'Valor'], [
+                ['Email', $email],
+                ['Password', $password],
+                ['Rol', 'superadmin'],
+                ['Tenant', 'N/A (Super Admin)'],
+            ]);
+
+            return self::SUCCESS;
+        }
+
+        // Regular admin mode
         $tenant = Tenant::first();
 
         if (! $tenant) {
@@ -33,10 +72,6 @@ class CreateAdminUser extends Command
         } else {
             $this->info("Tenant existente: {$tenant->name} (ID: {$tenant->id})");
         }
-
-        $email    = $this->option('email');
-        $password = $this->option('password');
-        $name     = $this->option('name');
 
         $user = User::where('email', $email)->first();
 

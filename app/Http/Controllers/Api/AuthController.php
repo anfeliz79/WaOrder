@@ -28,6 +28,11 @@ class AuthController extends Controller
         $user = Auth::user();
         $user->update(['last_login_at' => now()]);
 
+        // SuperAdmin redirects to superadmin dashboard
+        if ($user->isSuperAdmin()) {
+            return redirect()->intended('/superadmin');
+        }
+
         // Determine branches the user can access
         $branches = $this->getAccessibleBranches($user);
 

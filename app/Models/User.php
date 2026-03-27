@@ -33,6 +33,11 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'superadmin';
+    }
+
     public function isGestor(): bool
     {
         return $this->role === 'gestor';

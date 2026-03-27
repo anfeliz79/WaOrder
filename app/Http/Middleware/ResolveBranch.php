@@ -17,6 +17,11 @@ class ResolveBranch
             return $next($request);
         }
 
+        // SuperAdmin doesn't need branch resolution
+        if ($user->isSuperAdmin()) {
+            return $next($request);
+        }
+
         $tenant = app()->bound('tenant') ? app('tenant') : null;
 
         if (!$tenant) {

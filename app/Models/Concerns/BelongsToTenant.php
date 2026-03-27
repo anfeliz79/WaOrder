@@ -17,6 +17,10 @@ trait BelongsToTenant
         });
 
         static::addGlobalScope('tenant', function (Builder $builder) {
+            // SuperAdmin bypasses tenant isolation
+            if (auth()->check() && auth()->user()->isSuperAdmin()) {
+                return;
+            }
             if (app()->bound('tenant') && app('tenant')) {
                 $builder->where($builder->getModel()->getTable() . '.tenant_id', app('tenant')->id);
             }

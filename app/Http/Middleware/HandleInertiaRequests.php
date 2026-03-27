@@ -18,41 +18,48 @@ class HandleInertiaRequests extends Middleware
         $permissions = [];
 
         if ($user) {
-            // Load accessible branches
-            if ($user->isAdmin()) {
-                $tenant = app()->bound('tenant') ? app('tenant') : null;
-                if ($tenant) {
-                    $branches = $tenant->branches()
-                        ->active()
+            if ($user->isSuperAdmin()) {
+                // SuperAdmin: no branches, full permissions
+                $permissions = ['*', 'superadmin'];
+            } else {
+                // Load accessible branches
+                if ($user->isAdmin()) {
+                    $tenant = app()->bound('tenant') ? app('tenant') : null;
+                    if ($tenant) {
+                        $branches = $tenant->branches()
+                            ->active()
+                            ->orderBy('sort_order')
+                            ->get(['id', 'name'])
+                            ->toArray();
+                    }
+                } else {
+                    $branches = $user->branches()
+                        ->where('is_active', true)
                         ->orderBy('sort_order')
-                        ->get(['id', 'name'])
+                        ->get(['branches.id', 'branches.name'])
                         ->toArray();
                 }
-            } else {
-                $branches = $user->branches()
-                    ->where('is_active', true)
-                    ->orderBy('sort_order')
-                    ->get(['branches.id', 'branches.name'])
-                    ->toArray();
-            }
 
-            // Current branch
-            $branch = app()->bound('branch') ? app('branch') : null;
-            if ($branch) {
-                $currentBranch = ['id' => $branch->id, 'name' => $branch->name];
-            }
+                // Current branch
+                $branch = app()->bound('branch') ? app('branch') : null;
+                if ($branch) {
+                    $currentBranch = ['id' => $branch->id, 'name' => $branch->name];
+                }
 
-            // Permissions based on role
-            $permissions = $user->isAdmin()
-                ? ['*']
-                : ['dashboard.view', 'orders.view', 'orders.manage', 'customers.view'];
+                // Permissions based on role
+                $permissions = $user->isAdmin()
+                    ? ['*']
+                    : ['dashboard.view', 'orders.view', 'orders.manage', 'customers.view'];
+            }
         }
 
         $tenant = app()->bound('tenant') ? app('tenant') : null;
 
         return array_merge(parent::share($request), [
             'auth' => [
-                'user' => $user?->only('id', 'name', 'email', 'role'),
+                'user' => $user ? array_merge($user->only('id', 'name', 'email', 'role'), [
+                    'is_superadmin' => $user->isSuperAdmin(),
+                ]) : null,
                 'branches' => $branches,
                 'current_branch' => $currentBranch,
                 'permissions' => $permissions,

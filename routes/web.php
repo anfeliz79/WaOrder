@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\SetupController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
+use App\Http\Controllers\SuperAdmin\TenantController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -115,4 +117,17 @@ Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class, \App\Http
         Route::post('/system/queue/flush', [SystemController::class, 'clearFailedJobs']);
         Route::post('/system/storage/link', [SystemController::class, 'storageLink']);
     });
+});
+
+// ── Super Admin Routes ──────────────────────────────────────────────────────
+Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmin.')->group(function () {
+    Route::get('/', [SuperAdminDashboardController::class, 'index'])->name('dashboard');
+
+    Route::get('/tenants', [TenantController::class, 'index'])->name('tenants.index');
+    Route::get('/tenants/create', [TenantController::class, 'create'])->name('tenants.create');
+    Route::post('/tenants', [TenantController::class, 'store'])->name('tenants.store');
+    Route::get('/tenants/{id}/edit', [TenantController::class, 'edit'])->name('tenants.edit');
+    Route::put('/tenants/{id}', [TenantController::class, 'update'])->name('tenants.update');
+    Route::post('/tenants/{id}/toggle-active', [TenantController::class, 'toggleActive'])->name('tenants.toggle-active');
+    Route::delete('/tenants/{id}', [TenantController::class, 'destroy'])->name('tenants.destroy');
 });
