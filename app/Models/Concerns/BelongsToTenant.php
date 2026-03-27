@@ -21,8 +21,13 @@ trait BelongsToTenant
             // Use session guard's raw user to avoid infinite recursion
             // (auth()->user() triggers this scope again on User model → OOM)
             $guard = auth()->guard();
-            if ($guard->hasUser() && $guard->user()->isSuperAdmin()) {
-                return;
+            if ($guard->hasUser()) {
+                $authUser = $guard->user();
+                // Only User models have isSuperAdmin() — Driver model does not.
+                // Calling isSuperAdmin() on a Driver instance throws BadMethodCallException.
+                if ($authUser instanceof \App\Models\User && $authUser->isSuperAdmin()) {
+                    return;
+                }
             }
             if (app()->bound('tenant') && app('tenant')) {
                 $builder->where($builder->getModel()->getTable() . '.tenant_id', app('tenant')->id);
