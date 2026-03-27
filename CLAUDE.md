@@ -21,6 +21,7 @@ Plataforma SaaS multi-tenant para pedidos de restaurantes vía WhatsApp. Los cli
 app/
 ├── Http/Controllers/
 │   ├── Api/           — Controllers para admin API (Orders, Menu, Drivers, etc.)
+│   ├── SuperAdmin/    — DashboardController, TenantController (gestión global)
 │   └── Webhook/       — WhatsAppWebhookController (entrada de mensajes)
 ├── Jobs/
 │   ├── ProcessWhatsAppMessage.php   — Procesa mensaje entrante (async)
@@ -35,8 +36,12 @@ app/
 │   ├── Notification/  — NotificationService, DriverNotifier, PushNotificationService
 │   └── WhatsApp/      — WhatsAppClient, WebhookPayloadParser, MessageFactory
 resources/js/
-├── Layouts/AdminLayout.vue
-├── Pages/             — Páginas Inertia (Dashboard, Orders, Menu, Drivers, etc.)
+├── Layouts/
+│   ├── AdminLayout.vue       — Layout para admin/gestor de tenant
+│   └── SuperAdminLayout.vue  — Layout para super admin (sidebar dark + amber)
+├── Pages/
+│   ├── SuperAdmin/    — Dashboard, Tenants (Index, Create, Edit)
+│   └── ...            — Dashboard, Orders, Menu, Drivers, etc.
 └── Components/        — UI components compartidos
 routes/
 ├── api.php            — Driver app + Admin API
@@ -51,6 +56,7 @@ Base de datos compartida con aislamiento por `tenant_id` en cada tabla.
 - **`BelongsToTenant` trait** — Global scope automático en todos los modelos, auto-popula `tenant_id` en creación.
 - **`IdentifyTenant` middleware** — Resuelve tenant por: usuario auth → subdominio → Bearer token → primer tenant activo.
 - Todos los modelos tenant-aware usan este trait. **Nunca** hacer queries sin tenant resuelto.
+- **SuperAdmin bypass**: Si el usuario autenticado es `superadmin`, el global scope se desactiva para ver datos de todos los tenants. Usa `$guard->hasUser()` (no `auth()->user()`) para evitar recursión infinita.
 
 ## Conversation State Machine (Chatbot WhatsApp)
 
@@ -85,7 +91,7 @@ confirmed → in_preparation → ready → out_for_delivery → delivered (termi
 |--------|-----------|
 | `Tenant` | Cuenta del restaurante — tiene WhatsApp credentials (encriptadas) y settings JSON |
 | `Branch` | Sucursal física — zona de entrega (Haversine), settings con delivery_fee |
-| `User` | Admin/Gestor — roles: `admin` (todo) o `gestor` (solo su sucursal) |
+| `User` | SuperAdmin/Admin/Gestor — roles: `superadmin`, `admin`, `gestor` |
 | `MenuItem` | Producto — precio, image_url, `modifiers` (JSON con variant_groups y optional_groups) |
 | `Order` | Pedido — estado, precios calculados, driver asignado |
 | `ChatSession` | Estado de conversación — `cart_data`, `collected_info`, `context_data` (todos JSON) |
@@ -108,6 +114,13 @@ php artisan db:seed
 # Cache
 php artisan cache:clear
 php artisan config:clear
+
+# Super Admin
+php artisan waorder:create-admin --super --email=tu@email.com --password=clave
+php artisan waorder:create-admin --email=admin@rest.com --password=clave  # tenant admin
+
+# Deploy
+cd /var/www/waorder && bash deploy/deploy.sh
 ```
 
 ## AI / NLP (Opcional)
@@ -119,6 +132,80 @@ Capa de IA opcional que mejora el matching de ítems del menú cuando el regex +
 - **Fallback global**: Si el tenant no tiene key, usa `GROQ_API_KEY` o `OPENAI_API_KEY` del `.env`.
 - **Cache**: Respuestas de IA se cachean 24h para reducir costos.
 - **Sin IA**: El chatbot funciona perfectamente con regex + fuzzy matching. La IA solo mejora el reconocimiento de texto libre.
+
+## Super Admin (`/superadmin`)
+
+Panel de gestión global de la plataforma. Permite administrar todos los restaurantes (tenants) desde una sola interfaz.
+
+### Roles del Sistema
+
+| Rol | Scope | Acceso | tenant_id |
+|-----|-------|--------|-----------|
+| `superadmin` | Plataforma completa | `/superadmin/*` — ve todos los tenants | `NULL` |
+| `admin` | Su tenant | `/dashboard/*` — gestiona su restaurante | FK a tenants |
+| `gestor` | Su(s) sucursal(es) | Dashboard + pedidos de sus sucursales asignadas | FK a tenants |
+
+### Arquitectura SuperAdmin
+
+```
+app/Http/Controllers/SuperAdmin/
+├── DashboardController.php    — Stats globales (tenants, users, orders, customers)
+└── TenantController.php       — CRUD completo de tenants con admin + sucursal
+
+app/Http/Middleware/
+└── EnsureSuperAdmin.php       — Protege rutas /superadmin/*
+
+resources/js/
+├── Layouts/SuperAdminLayout.vue        — Layout dedicado (sidebar dark + amber)
+└── Pages/SuperAdmin/
+    ├── Dashboard.vue                   — Stat cards + tablas recientes
+    └── Tenants/
+        ├── Index.vue                   — Lista paginada con búsqueda y filtros
+        ├── Create.vue                  — Crear tenant + admin + sucursal
+        └── Edit.vue                    — Editar tenant, ver stats/usuarios/sucursales
+```
+
+### Middleware Chain para SuperAdmin
+
+1. `auth` — Requiere sesión activa
+2. `EnsureSuperAdmin` — Verifica `role === 'superadmin'`
+3. `IdentifyTenant` — Salta (SuperAdmin no necesita tenant)
+4. `ResolveBranch` — Salta (SuperAdmin no tiene sucursal)
+5. `EnsureSetupComplete` — Salta (SuperAdmin no pasa por setup wizard)
+6. `BelongsToTenant` scope — Se desactiva via `$guard->hasUser()` check
+
+### Login SuperAdmin
+
+El login estándar (`/login`) maneja los 3 roles:
+- Si `Auth::attempt` falla (scope de tenant filtra usuarios), busca SuperAdmin sin scope (`User::withoutGlobalScope('tenant')`)
+- SuperAdmin → redirige a `/superadmin`
+- Admin/Gestor → redirige a `/dashboard` o `/select-branch`
+
+### Crear SuperAdmin
+
+```bash
+php artisan waorder:create-admin --super --email=tu@email.com --password=TuClave --name="Tu Nombre"
+```
+
+### Crear Nuevo Restaurante (Tenant)
+
+Desde el panel SuperAdmin → Restaurantes → Nuevo Restaurante:
+1. Datos del restaurante (nombre, slug, timezone, moneda, plan)
+2. Admin del restaurante (nombre, email, contraseña)
+3. Sucursal inicial (opcional)
+
+O via Artisan para el primer tenant:
+```bash
+php artisan waorder:create-admin --email=admin@restaurante.com --password=clave123
+```
+
+### Hallazgos Técnicos del SuperAdmin
+
+| Problema | Causa | Solución |
+|----------|-------|----------|
+| Login SuperAdmin fallaba | `BelongsToTenant` scope filtraba `tenant_id=NULL` | Fallback query `User::withoutGlobalScope('tenant')` en AuthController |
+| OOM (256MB) al acceder `/superadmin` | `auth()->user()` dentro del scope `BelongsToTenant` → recursión infinita al cargar User | Usar `$guard->hasUser()` que verifica si el user ya está en memoria sin triggerar query |
+| SuperAdmin veía dashboard de tenant | Sesión redirigía a `/dashboard` en vez de `/superadmin` | AuthController verifica `isSuperAdmin()` y redirige correctamente |
 
 ## Panel de Sistema (`/system`)
 
@@ -198,7 +285,9 @@ cd /var/www/waorder && bash deploy/deploy.sh
 | Composer warning como root | Composer detecta root | `export COMPOSER_ALLOW_SUPERUSER=1` |
 | `php artisan key:generate` falla | No hay vendor/ | Ejecutar `composer install` primero |
 | Login sin credenciales | No se creó admin | `php artisan waorder:create-admin` |
-| `waorder:create-admin` falla con error 1364 | Campos WhatsApp NOT NULL sin valor | `ALTER TABLE tenants MODIFY whatsapp_phone_number_id VARCHAR(50) NULL, MODIFY whatsapp_business_account_id VARCHAR(50) NULL, MODIFY whatsapp_access_token TEXT NULL;` en MySQL, luego re-ejecutar el comando |
+| `waorder:create-admin` falla con error 1364 | Campos WhatsApp NOT NULL sin valor | Migración ya los hace nullable; si persiste: `ALTER TABLE tenants MODIFY whatsapp_phone_number_id VARCHAR(50) NULL` |
+| Login SuperAdmin falla "credenciales no coinciden" | `BelongsToTenant` scope filtra `tenant_id=NULL` | AuthController hace fallback: `User::withoutGlobalScope('tenant')` para buscar superadmins |
+| OOM 256MB al cargar cualquier página | `auth()->user()` en BelongsToTenant scope → recursión infinita | Usar `$guard->hasUser()` en vez de `auth()->check()` dentro del global scope |
 
 ### SSL con Let's Encrypt
 
@@ -231,9 +320,10 @@ Si el dominio principal está en SiteGround y quieres usar un subdominio (ej: `w
 ### Multi-Tenancy en Producción
 
 Un solo deploy sirve múltiples restaurantes. Para agregar un nuevo restaurante:
-1. Crear nuevo `Tenant` desde la app (futuro: Super Admin panel)
-2. Configurar su WhatsApp Business API (access token + phone number ID)
-3. Los tenants comparten infraestructura — no se necesita otro droplet
+1. Login como SuperAdmin → `/superadmin/tenants/create`
+2. Llenar datos del restaurante + admin + sucursal inicial
+3. El admin del restaurante configura WhatsApp desde su panel → Configuración
+4. Los tenants comparten infraestructura — no se necesita otro droplet
 
 ## Notas Importantes
 
@@ -244,3 +334,5 @@ Un solo deploy sirve múltiples restaurantes. Para agregar un nuevo restaurante:
 - Los drivers se autentican via QR code → Sanctum token. El `linking_token` es single-use y expira en 15 min.
 - Gestors solo ven pedidos de su sucursal asignada (filtro via `ResolveBranch` middleware + `session('branch_id')`).
 - Menu interno se cachea 10 minutos. Para forzar refresh: `php artisan cache:clear`.
+- **CRÍTICO — BelongsToTenant scope**: **Nunca** usar `auth()->user()` o `auth()->check()` dentro del global scope de `BelongsToTenant`. Causa recursión infinita (el User model tiene el mismo trait → query infinita → OOM). Usar `auth()->guard()->hasUser()` que solo verifica si el user ya está cargado en memoria.
+- **SuperAdmin tiene `tenant_id = NULL`**: El login estándar no lo encuentra porque el scope filtra por tenant. El `AuthController` hace un fallback explícito buscando sin scope.
