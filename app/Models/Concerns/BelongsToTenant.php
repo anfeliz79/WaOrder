@@ -18,7 +18,10 @@ trait BelongsToTenant
 
         static::addGlobalScope('tenant', function (Builder $builder) {
             // SuperAdmin bypasses tenant isolation
-            if (auth()->check() && auth()->user()->isSuperAdmin()) {
+            // Use session guard's raw user to avoid infinite recursion
+            // (auth()->user() triggers this scope again on User model → OOM)
+            $guard = auth()->guard();
+            if ($guard->hasUser() && $guard->user()->isSuperAdmin()) {
                 return;
             }
             if (app()->bound('tenant') && app('tenant')) {
