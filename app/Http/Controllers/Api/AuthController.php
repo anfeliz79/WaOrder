@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class AuthController extends Controller
@@ -17,10 +19,21 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
+        // Intentar login normal (con tenant scope)
         if (!Auth::attempt($credentials, $request->boolean('remember'))) {
-            return back()->withErrors([
-                'email' => 'Las credenciales no coinciden.',
-            ]);
+            // Si falla, intentar como SuperAdmin (sin tenant scope, tenant_id = NULL)
+            $superAdmin = User::withoutGlobalScope('tenant')
+                ->where('email', $credentials['email'])
+                ->where('role', 'superadmin')
+                ->first();
+
+            if ($superAdmin && Hash::check($credentials['password'], $superAdmin->password)) {
+                Auth::login($superAdmin, $request->boolean('remember'));
+            } else {
+                return back()->withErrors([
+                    'email' => 'Las credenciales no coinciden.',
+                ]);
+            }
         }
 
         $request->session()->regenerate();
