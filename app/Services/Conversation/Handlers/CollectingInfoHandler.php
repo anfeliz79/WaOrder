@@ -358,7 +358,7 @@ class CollectingInfoHandler implements HandlerInterface
                 $info['delivery_type'] = 'delivery';
 
                 return [
-                    'response' => "¡Perfecto! 🛵 ¿Cuál es tu dirección de entrega?\n_(También puedes compartir tu ubicación de WhatsApp)_",
+                    'response' => "¡Perfecto! 🛵 Para verificar que llegamos a tu zona, *comparte tu ubicación de WhatsApp*.\n\n📍 Toca el clip de adjuntos → *Ubicación* → *Enviar mi ubicación actual*.",
                     'response_type' => 'text',
                     'collected_info' => $info,
                     'context_data' => array_merge($context, ['awaiting_field' => 'address']),
@@ -399,53 +399,48 @@ class CollectingInfoHandler implements HandlerInterface
                 $info['latitude'] = $locationData['latitude'] ?? null;
                 $info['longitude'] = $locationData['longitude'] ?? null;
             } else {
-                $info['address'] = $message;
-                $info['latitude'] = null;
-                $info['longitude'] = null;
+                // Customer typed text instead of sharing GPS — guide them to share location
+                return [
+                    'response' => "📍 Para verificar que llegamos a tu zona necesito tu ubicación exacta.\n\nToca el clip de adjuntos → *Ubicación* → *Enviar mi ubicación actual*.",
+                    'response_type' => 'text',
+                    'collected_info' => $info,
+                    'context_data' => $context, // keep awaiting_field = 'address'
+                ];
             }
 
-            // Route to nearest branch if coordinates are available
+            // Route to nearest branch using GPS coordinates
             $tenant = app('tenant');
             $branchRouter = app(BranchRouter::class);
 
-            if (!empty($info['latitude']) && !empty($info['longitude'])) {
-                $branch = $branchRouter->findNearestBranch(
-                    $tenant->id,
-                    (float) $info['latitude'],
-                    (float) $info['longitude']
-                );
+            $branch = $branchRouter->findNearestBranch(
+                $tenant->id,
+                (float) $info['latitude'],
+                (float) $info['longitude']
+            );
 
-                if (!$branch) {
-                    // Customer is out of delivery range
-                    return [
-                        'response' => "Hmm, tu ubicación está fuera de nuestra área de cobertura de delivery. 😕\n\nPuedes intentar con otra dirección o pasar a recoger en una de nuestras sucursales:",
-                        'response_type' => 'buttons',
-                        'buttons' => [
-                            ['id' => 'info_retry_address', 'title' => 'Otra dirección'],
-                            ['id' => 'info_switch_pickup', 'title' => 'Recoger en tienda'],
-                        ],
-                        'collected_info' => $info,
-                        'context_data' => array_merge($context, ['awaiting_field' => 'address_retry']),
-                    ];
-                }
-
-                $info['branch_id'] = $branch->id;
-            } else {
-                // No coordinates: assign default branch
-                $defaultBranch = $branchRouter->getDefaultBranch($tenant->id);
-                $info['branch_id'] = $defaultBranch?->id;
+            if (!$branch) {
+                // Customer is out of delivery range
+                return [
+                    'response' => "Hmm, tu ubicación está fuera de nuestra área de cobertura de delivery. 😕\n\nPuedes intentar con otra dirección o pasar a recoger en una de nuestras sucursales:",
+                    'response_type' => 'buttons',
+                    'buttons' => [
+                        ['id' => 'info_retry_address', 'title' => 'Otra dirección'],
+                        ['id' => 'info_switch_pickup', 'title' => 'Recoger en tienda'],
+                    ],
+                    'collected_info' => $info,
+                    'context_data' => array_merge($context, ['awaiting_field' => 'address_retry']),
+                ];
             }
 
-            $interaction = $this->buildPaymentInteraction();
-            return array_filter([
-                'response' => '💳 ¿Cómo deseas pagar?',
-                'response_type' => $interaction['type'],
-                'buttons' => $interaction['buttons'] ?? null,
-                'list_button_text' => $interaction['list_button_text'] ?? null,
-                'list_sections' => $interaction['list_sections'] ?? null,
+            $info['branch_id'] = $branch->id;
+
+            // GPS validated — now ask for a text reference for the delivery driver
+            return [
+                'response' => "¡Perfecto, llegamos a tu zona! ✅\n\nEscribe una *referencia de tu dirección* para que el repartidor te encuentre fácil (calle, edificio, color de la casa, número de apartamento, etc.):",
+                'response_type' => 'text',
                 'collected_info' => $info,
-                'context_data' => array_merge($context, ['awaiting_field' => 'payment_method']),
-            ], fn ($v) => $v !== null);
+                'context_data' => array_merge($context, ['awaiting_field' => 'address_reference']),
+            ];
         }
 
         // Collect pickup location to recommend nearest branch
@@ -522,7 +517,7 @@ class CollectingInfoHandler implements HandlerInterface
         if ($awaitingField === 'address_retry') {
             if (in_array($lower, ['info_retry_address', '1', 'otra', 'otra direccion', 'otra dirección'])) {
                 return [
-                    'response' => "¿Cuál es la nueva dirección de entrega?\n_(Puedes compartir tu ubicación de WhatsApp)_",
+                    'response' => "Toca el clip de adjuntos → *Ubicación* → *Enviar mi ubicación actual* para intentar con otra zona. 📍",
                     'response_type' => 'text',
                     'collected_info' => $info,
                     'context_data' => array_merge($context, ['awaiting_field' => 'address']),
@@ -558,6 +553,22 @@ class CollectingInfoHandler implements HandlerInterface
                     ['id' => 'info_switch_pickup', 'title' => 'Recoger en tienda'],
                 ],
             ];
+        }
+
+        // Collect address reference (text note for the delivery driver)
+        if ($awaitingField === 'address_reference') {
+            $info['address'] = $message;
+
+            $interaction = $this->buildPaymentInteraction();
+            return array_filter([
+                'response' => '💳 ¿Cómo deseas pagar?',
+                'response_type' => $interaction['type'],
+                'buttons' => $interaction['buttons'] ?? null,
+                'list_button_text' => $interaction['list_button_text'] ?? null,
+                'list_sections' => $interaction['list_sections'] ?? null,
+                'collected_info' => $info,
+                'context_data' => array_merge($context, ['awaiting_field' => 'payment_method']),
+            ], fn ($v) => $v !== null);
         }
 
         // Collect payment method
@@ -638,4 +649,5 @@ class CollectingInfoHandler implements HandlerInterface
             'response_type' => 'text',
         ];
     }
+
 }
