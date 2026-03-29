@@ -4,8 +4,6 @@ namespace App\Services\Conversation\Handlers;
 
 use App\Models\ChatSession;
 use App\Models\Order;
-use App\Services\Menu\MenuService;
-use App\Services\Menu\MenuTokenService;
 
 class GreetingHandler implements HandlerInterface
 {
@@ -57,36 +55,8 @@ class GreetingHandler implements HandlerInterface
             ? "¡Hola {$customerName}! 😊 Qué gusto tenerte de vuelta en *{$restaurantName}*. ¿Cómo te podemos ayudar?"
             : "¡Hola! 👋 Bienvenido a *{$restaurantName}*. Qué bueno que estás aquí. ¿En qué te podemos ayudar?";
 
-        // For external menus, send CTA URL button to open the web menu client
-        if ($tenant->getMenuSource() === 'external') {
-            $tokenService = app(MenuTokenService::class);
-            $token = $tokenService->generateMenuToken(
-                $tenant->id,
-                $session->id,
-                $session->customer_phone,
-            );
-            $menuUrl = $tokenService->buildMenuUrl($token);
-
-            $result = [
-                'response' => $greeting,
-                'response_type' => 'cta_url',
-                'cta_body' => $greeting,
-                'cta_button_text' => '🛒 Ver el menu',
-                'cta_url' => $menuUrl,
-                'next_state' => 'cart_review',
-                'context_data' => array_merge($session->context_data ?? [], ['web_menu_token' => $token]),
-            ];
-
-            // Offer phone option as follow-up message
-            $callCta = $this->buildCallCta($tenant);
-            if ($callCta) {
-                $result['post_messages'] = [$callCta];
-            }
-
-            return $result;
-        }
-
-        // Build main buttons: always offer ordering, optionally offer calling
+        // Same two-button greeting for both internal and external menus.
+        // MenuBrowsingHandler se encarga de generar el CTA de menú web cuando opt_order llega.
         $buttons = [
             ['id' => 'opt_order', 'title' => 'Hacer mi pedido'],
         ];
