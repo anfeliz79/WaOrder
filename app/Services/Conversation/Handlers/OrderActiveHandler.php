@@ -26,10 +26,10 @@ class OrderActiveHandler implements HandlerInterface
 
         if (!$order) {
             return [
-                'response' => "No tienes pedidos activos en este momento.\n\nQuieres hacer un nuevo pedido?",
+                'response' => "No tienes pedidos activos ahora mismo. ¿Te animas a hacer uno? 😊",
                 'response_type' => 'buttons',
                 'buttons' => [
-                    ['id' => 'opt_menu', 'title' => 'Ver el menu'],
+                    ['id' => 'opt_order', 'title' => 'Hacer mi pedido'],
                 ],
                 'next_state' => 'greeting',
             ];
@@ -37,9 +37,12 @@ class OrderActiveHandler implements HandlerInterface
 
         // Check if order reached terminal state
         if ($order->isTerminal()) {
-            $status = $order->status === 'delivered' ? 'entregado' : 'cancelado';
+            $terminalMsg = $order->status === 'delivered'
+                ? "¡Tu pedido *#{$order->order_number}* fue entregado! 🎉 Esperamos que lo hayas disfrutado. Escríbenos cuando quieras pedir de nuevo."
+                : "Tu pedido *#{$order->order_number}* fue cancelado. 😔 Si necesitas ayuda, con gusto te atendemos. Escríbenos cuando quieras.";
+
             return [
-                'response' => "Tu pedido #{$order->order_number} ha sido {$status}.\n\nGracias por tu preferencia! Escribe cuando quieras pedir de nuevo.",
+                'response' => $terminalMsg,
                 'next_state' => 'greeting',
                 'active_order_id' => null,
                 'destroy_session' => true,
@@ -83,24 +86,17 @@ class OrderActiveHandler implements HandlerInterface
 
     private function showOrderStatus(Order $order): array
     {
-        $statusLabels = [
-            'confirmed' => 'confirmado y esperando preparacion',
-            'in_preparation' => 'siendo preparado en este momento',
-            'ready' => 'listo! Pronto sera despachado',
-            'out_for_delivery' => 'en camino hacia ti',
+        $statusMessages = [
+            'confirmed' => "✅ Tu pedido *#{$order->order_number}* fue confirmado y está en fila para ser preparado. ¡Ya casi!",
+            'in_preparation' => "👨‍🍳 ¡Buenas noticias! Tu pedido *#{$order->order_number}* ya está siendo preparado. Nuestros cocineros están en eso.",
+            'ready' => "📦 ¡Tu pedido *#{$order->order_number}* está listo! En breve sale para donde estás.",
+            'out_for_delivery' => "🛵 ¡Tu pedido *#{$order->order_number}* ya salió y va en camino hacia ti! No te muevas. 😄",
         ];
 
-        $statusEmoji = [
-            'confirmed' => "\u{2705}",
-            'in_preparation' => "\u{1F468}\u{200D}\u{1F373}",
-            'ready' => "\u{1F4E6}",
-            'out_for_delivery' => "\u{1F6F5}",
-        ];
+        $response = $statusMessages[$order->status]
+            ?? "📋 Tu pedido *#{$order->order_number}* — estado: {$order->status}";
 
-        $emoji = $statusEmoji[$order->status] ?? "\u{1F4CB}";
-        $statusText = $statusLabels[$order->status] ?? $order->status;
-
-        $response = "{$emoji} Tu pedido *#{$order->order_number}* esta {$statusText}.\n\nTe avisaremos cuando haya un cambio.";
+        $response .= "\n\nTe avisamos de cualquier cambio.";
 
         // Build buttons based on order status
         $buttons = [];
@@ -118,9 +114,18 @@ class OrderActiveHandler implements HandlerInterface
             'buttons' => array_slice($buttons, 0, 3),
         ];
 
-        $callCta = $this->buildCallCta();
-        if ($callCta) {
-            $result['post_messages'] = [$callCta];
+        // Contextual CTA: driver contact when out for delivery, restaurant call otherwise
+        if ($order->status === 'out_for_delivery') {
+            $order->loadMissing('driver');
+            $cta = $order->driver
+                ? $this->buildDriverCta($order->driver)
+                : $this->buildCallCta();
+        } else {
+            $cta = $this->buildCallCta();
+        }
+
+        if ($cta) {
+            $result['post_messages'] = [$cta];
         }
 
         return $result;
@@ -130,16 +135,16 @@ class OrderActiveHandler implements HandlerInterface
     {
         // Can only cancel if order is 'confirmed' (not yet in preparation)
         if ($order->status !== 'confirmed') {
-            $statusLabels = [
-                'in_preparation' => 'ya esta siendo preparado',
-                'ready' => 'ya esta listo',
-                'out_for_delivery' => 'ya esta en camino',
+            $statusReasons = [
+                'in_preparation' => 'ya está siendo preparado 👨‍🍳',
+                'ready' => 'ya está listo para salir 📦',
+                'out_for_delivery' => 'ya viene en camino 🛵',
             ];
 
-            $reason = $statusLabels[$order->status] ?? 'ya esta en proceso';
+            $reason = $statusReasons[$order->status] ?? 'ya está en proceso';
 
             $result = [
-                'response' => "Lo sentimos, tu pedido #{$order->order_number} {$reason} y no puede ser cancelado en este momento.\n\nSi necesitas ayuda, contacta al restaurante.",
+                'response' => "Lo sentimos, tu pedido *#{$order->order_number}* {$reason} y ya no es posible cancelarlo.\n\nSi necesitas ayuda, con gusto te atendemos.",
                 'response_type' => 'buttons',
                 'buttons' => [
                     ['id' => 'active_status', 'title' => 'Ver estado'],
@@ -155,10 +160,10 @@ class OrderActiveHandler implements HandlerInterface
         }
 
         return [
-            'response' => "Estas seguro que deseas cancelar tu pedido #{$order->order_number}?\n\nEsta accion no se puede deshacer.",
+            'response' => "¿Estás seguro de que deseas cancelar tu pedido *#{$order->order_number}*?\n\nEsta acción no se puede deshacer.",
             'response_type' => 'buttons',
             'buttons' => [
-                ['id' => 'cancel_confirm_yes', 'title' => 'Si, cancelar'],
+                ['id' => 'cancel_confirm_yes', 'title' => 'Sí, cancelar'],
                 ['id' => 'cancel_confirm_no', 'title' => 'No, mantener'],
             ],
         ];
@@ -175,14 +180,14 @@ class OrderActiveHandler implements HandlerInterface
             $orchestrator->transition($order, 'cancel', 'customer', null, 'Cancelado por el cliente via WhatsApp');
 
             return [
-                'response' => "Tu pedido #{$order->order_number} ha sido cancelado.\n\nLamentamos que no pudieramos atenderte esta vez. Escribe cuando quieras pedir de nuevo!",
+                'response' => "Tu pedido *#{$order->order_number}* fue cancelado. 😔\n\nLamentamos que no pudiéramos atenderte esta vez. ¡Escríbenos cuando quieras pedir de nuevo!",
                 'next_state' => 'greeting',
                 'active_order_id' => null,
                 'destroy_session' => true,
             ];
         } catch (\Exception $e) {
             $result = [
-                'response' => "No pudimos cancelar tu pedido en este momento. Por favor contacta al restaurante.",
+                'response' => "No pudimos cancelar tu pedido en este momento. Por favor contáctanos directamente.",
                 'response_type' => 'text',
             ];
 
@@ -232,9 +237,22 @@ class OrderActiveHandler implements HandlerInterface
 
         return [
             'type' => 'cta_url',
-            'body' => "\u{260E}\u{FE0F} Para llamar al restaurante:",
-            'button_text' => 'Llamar restaurante',
+            'body' => "📞 ¿Tienes alguna pregunta sobre tu pedido? Llámanos:",
+            'button_text' => 'Llamar al restaurante',
             'url' => "tel:{$cleanPhone}",
+        ];
+    }
+
+    private function buildDriverCta(\App\Models\Driver $driver): array
+    {
+        $phone = preg_replace('/[^0-9]/', '', $driver->phone);
+        $waLink = "https://wa.me/{$phone}";
+
+        return [
+            'type' => 'cta_url',
+            'body' => "🛵 *{$driver->name}* está de camino con tu pedido. ¿Necesitas contactarlo?",
+            'button_text' => 'Llamar al repartidor',
+            'url' => $waLink,
         ];
     }
 }

@@ -207,7 +207,7 @@ class CollectingInfoHandler implements HandlerInterface
             $info['branch_id'] = $defaultBranch?->id;
             $interaction = $this->buildPaymentInteraction();
             return array_filter([
-                'response' => 'Como deseas pagar?',
+                'response' => '¿Cómo deseas pagar?',
                 'response_type' => $interaction['type'],
                 'buttons' => $interaction['buttons'] ?? null,
                 'list_button_text' => $interaction['list_button_text'] ?? null,
@@ -224,7 +224,7 @@ class CollectingInfoHandler implements HandlerInterface
         ], $branchesWithDistance);
 
         // Build display text
-        $lines = ["Selecciona la sucursal de tu preferencia:"];
+        $lines = ["📍 Selecciona la sucursal de tu preferencia:"];
         foreach ($branchesWithDistance as $i => $bwd) {
             $branch = $bwd['branch'];
             $distText = '';
@@ -233,7 +233,7 @@ class CollectingInfoHandler implements HandlerInterface
             }
             $line = ($i + 1) . ". *{$branch->name}*{$distText}";
             if (!empty($branch->address)) {
-                $line .= "\n   {$branch->address}";
+                $line .= "\n   📌 {$branch->address}";
             }
             $lines[] = $line;
         }
@@ -250,13 +250,20 @@ class CollectingInfoHandler implements HandlerInterface
                 'title' => mb_substr($bwd['branch']->name, 0, 20),
             ], $branchesWithDistance);
 
-            return [
+            // Build map CTA post-messages for each branch
+            $mapMessages = $this->buildBranchMapMessages($branchesWithDistance);
+
+            $result = [
                 'response' => $responseText,
                 'response_type' => 'buttons',
                 'buttons' => $buttons,
                 'collected_info' => $info,
                 'context_data' => $newContext,
             ];
+            if (!empty($mapMessages)) {
+                $result['post_messages'] = $mapMessages;
+            }
+            return $result;
         }
 
         $rows = array_map(fn ($bwd) => [
@@ -265,7 +272,10 @@ class CollectingInfoHandler implements HandlerInterface
             'description' => mb_substr($bwd['branch']->address ?? '', 0, 72),
         ], $branchesWithDistance);
 
-        return [
+        // Build map CTA post-messages for each branch
+        $mapMessages = $this->buildBranchMapMessages($branchesWithDistance);
+
+        $result = [
             'response' => $responseText,
             'response_type' => 'list',
             'list_button_text' => 'Ver sucursales',
@@ -275,6 +285,46 @@ class CollectingInfoHandler implements HandlerInterface
             'collected_info' => $info,
             'context_data' => $newContext,
         ];
+        if (!empty($mapMessages)) {
+            $result['post_messages'] = $mapMessages;
+        }
+        return $result;
+    }
+
+    /**
+     * Build CTA URL "Cómo llegar" post-messages for each branch that has an address.
+     * Each branch gets its own message with a Google Maps navigation link.
+     */
+    private function buildBranchMapMessages(array $branchesWithDistance): array
+    {
+        $messages = [];
+        foreach ($branchesWithDistance as $bwd) {
+            $branch = $bwd['branch'];
+
+            // Build Google Maps URL — prefer coordinates, fall back to address string
+            $lat = $branch->latitude ?? null;
+            $lng = $branch->longitude ?? null;
+
+            if ($lat && $lng) {
+                $mapsUrl = "https://www.google.com/maps/dir/?api=1&destination={$lat},{$lng}";
+            } elseif (!empty($branch->address)) {
+                $mapsUrl = "https://www.google.com/maps/dir/?api=1&destination=" . urlencode($branch->address);
+            } else {
+                continue; // Skip branches with no location info
+            }
+
+            $distText = ($bwd['distance'] !== null)
+                ? ' — ' . number_format($bwd['distance'], 1) . ' km'
+                : '';
+
+            $messages[] = [
+                'type' => 'cta_url',
+                'body' => "🗺️ *{$branch->name}*{$distText}" . (!empty($branch->address) ? "\n📌 {$branch->address}" : ''),
+                'button_text' => 'Cómo llegar',
+                'url' => $mapsUrl,
+            ];
+        }
+        return $messages;
     }
 
     public function handle(ChatSession $session, string $message, string $messageType): array
@@ -291,11 +341,11 @@ class CollectingInfoHandler implements HandlerInterface
             $info['name'] = $message;
 
             return [
-                'response' => "Gracias {$message}! Como deseas recibir tu pedido?",
+                'response' => "¡Gracias, {$message}! 😊 ¿Cómo deseas recibir tu pedido?",
                 'response_type' => 'buttons',
                 'buttons' => [
-                    ['id' => 'info_delivery', 'title' => 'Delivery'],
-                    ['id' => 'info_pickup', 'title' => 'Pickup'],
+                    ['id' => 'info_delivery', 'title' => '🛵 Delivery'],
+                    ['id' => 'info_pickup', 'title' => '🏪 Recoger'],
                 ],
                 'collected_info' => $info,
                 'context_data' => array_merge($context, ['awaiting_field' => 'delivery_type']),
@@ -304,22 +354,22 @@ class CollectingInfoHandler implements HandlerInterface
 
         // Collect delivery type
         if ($awaitingField === 'delivery_type') {
-            if (in_array($lower, ['info_delivery', '1', 'delivery', 'envio', 'domicilio'])) {
+            if (in_array($lower, ['info_delivery', '1', 'delivery', 'envio', 'domicilio', '🛵 delivery'])) {
                 $info['delivery_type'] = 'delivery';
 
                 return [
-                    'response' => "Cual es tu direccion de entrega?\n(Puedes enviar tu ubicacion de WhatsApp)",
+                    'response' => "¡Perfecto! 🛵 ¿Cuál es tu dirección de entrega?\n_(También puedes compartir tu ubicación de WhatsApp)_",
                     'response_type' => 'text',
                     'collected_info' => $info,
                     'context_data' => array_merge($context, ['awaiting_field' => 'address']),
                 ];
             }
 
-            if (in_array($lower, ['info_pickup', '2', 'pickup', 'recoger', 'recogida'])) {
+            if (in_array($lower, ['info_pickup', '2', 'pickup', 'recoger', 'recogida', '🏪 recoger'])) {
                 $info['delivery_type'] = 'pickup';
 
                 return [
-                    'response' => "Para recomendarte la sucursal mas cercana, envia tu ubicacion de WhatsApp:",
+                    'response' => "¡Claro! 🏪 Para recomendarte la sucursal más cercana, comparte tu ubicación de WhatsApp:",
                     'response_type' => 'buttons',
                     'buttons' => [
                         ['id' => 'info_skip_location', 'title' => 'Ver todas'],
@@ -330,11 +380,11 @@ class CollectingInfoHandler implements HandlerInterface
             }
 
             return [
-                'response' => 'Selecciona como deseas recibir tu pedido:',
+                'response' => '¿Cómo prefieres recibir tu pedido?',
                 'response_type' => 'buttons',
                 'buttons' => [
-                    ['id' => 'info_delivery', 'title' => 'Delivery'],
-                    ['id' => 'info_pickup', 'title' => 'Pickup'],
+                    ['id' => 'info_delivery', 'title' => '🛵 Delivery'],
+                    ['id' => 'info_pickup', 'title' => '🏪 Recoger'],
                 ],
             ];
         }
@@ -368,10 +418,10 @@ class CollectingInfoHandler implements HandlerInterface
                 if (!$branch) {
                     // Customer is out of delivery range
                     return [
-                        'response' => "Lo sentimos, tu ubicacion esta fuera de nuestra area de cobertura.\n\nPuedes enviar otra direccion o seleccionar recoger en tienda:",
+                        'response' => "Hmm, tu ubicación está fuera de nuestra área de cobertura de delivery. 😕\n\nPuedes intentar con otra dirección o pasar a recoger en una de nuestras sucursales:",
                         'response_type' => 'buttons',
                         'buttons' => [
-                            ['id' => 'info_retry_address', 'title' => 'Otra direccion'],
+                            ['id' => 'info_retry_address', 'title' => 'Otra dirección'],
                             ['id' => 'info_switch_pickup', 'title' => 'Recoger en tienda'],
                         ],
                         'collected_info' => $info,
@@ -388,7 +438,7 @@ class CollectingInfoHandler implements HandlerInterface
 
             $interaction = $this->buildPaymentInteraction();
             return array_filter([
-                'response' => 'Como deseas pagar?',
+                'response' => '💳 ¿Cómo deseas pagar?',
                 'response_type' => $interaction['type'],
                 'buttons' => $interaction['buttons'] ?? null,
                 'list_button_text' => $interaction['list_button_text'] ?? null,
@@ -453,12 +503,12 @@ class CollectingInfoHandler implements HandlerInterface
             $info['branch_id'] = $selectedBranch->id;
             $branchInfo = "*{$selectedBranch->name}*";
             if (!empty($selectedBranch->address)) {
-                $branchInfo .= "\n{$selectedBranch->address}";
+                $branchInfo .= "\n📌 {$selectedBranch->address}";
             }
 
             $interaction = $this->buildPaymentInteraction();
             return array_filter([
-                'response' => "Perfecto! Te esperamos en {$branchInfo}\n\nComo deseas pagar?",
+                'response' => "¡Perfecto! 🏪 Te esperamos en {$branchInfo}\n\n💳 ¿Cómo deseas pagar?",
                 'response_type' => $interaction['type'],
                 'buttons' => $interaction['buttons'] ?? null,
                 'list_button_text' => $interaction['list_button_text'] ?? null,
@@ -470,16 +520,16 @@ class CollectingInfoHandler implements HandlerInterface
 
         // Handle address retry (out of delivery range)
         if ($awaitingField === 'address_retry') {
-            if (in_array($lower, ['info_retry_address', '1', 'otra', 'otra direccion'])) {
+            if (in_array($lower, ['info_retry_address', '1', 'otra', 'otra direccion', 'otra dirección'])) {
                 return [
-                    'response' => "Cual es tu direccion de entrega?\n(Puedes enviar tu ubicacion de WhatsApp)",
+                    'response' => "¿Cuál es la nueva dirección de entrega?\n_(Puedes compartir tu ubicación de WhatsApp)_",
                     'response_type' => 'text',
                     'collected_info' => $info,
                     'context_data' => array_merge($context, ['awaiting_field' => 'address']),
                 ];
             }
 
-            if (in_array($lower, ['info_switch_pickup', '2', 'recoger', 'pickup'])) {
+            if (in_array($lower, ['info_switch_pickup', '2', 'recoger', 'pickup', 'recoger en tienda'])) {
                 $info['delivery_type'] = 'pickup';
 
                 $tenant = app('tenant');
@@ -501,10 +551,10 @@ class CollectingInfoHandler implements HandlerInterface
             }
 
             return [
-                'response' => 'Selecciona una opcion:',
+                'response' => '¿Qué prefieres hacer?',
                 'response_type' => 'buttons',
                 'buttons' => [
-                    ['id' => 'info_retry_address', 'title' => 'Otra direccion'],
+                    ['id' => 'info_retry_address', 'title' => 'Otra dirección'],
                     ['id' => 'info_switch_pickup', 'title' => 'Recoger en tienda'],
                 ],
             ];
@@ -529,7 +579,7 @@ class CollectingInfoHandler implements HandlerInterface
 
             // Build response with payment details if applicable
             $paymentDetails = $this->buildPaymentMethodResponse($selectedMethod);
-            $notesPrompt = "Alguna nota adicional para tu pedido? (Escribe 'no' si no tienes)";
+            $notesPrompt = "¿Tienes alguna nota especial para tu pedido? (ingredientes, instrucciones de entrega, etc.)\n_Escribe 'no' si no tienes ninguna._";
 
             $response = $paymentDetails
                 ? "{$paymentDetails}\n\n{$notesPrompt}"
@@ -546,7 +596,7 @@ class CollectingInfoHandler implements HandlerInterface
         // Collect notes
         if ($awaitingField === 'notes') {
             $lower = mb_strtolower($message);
-            $info['notes'] = in_array($lower, ['no', 'ninguna', 'nada', 'n']) ? null : $message;
+            $info['notes'] = in_array($lower, ['no', 'ninguna', 'nada', 'n', 'ninguno']) ? null : $message;
 
             // Build confirmation
             $tenant = app('tenant');

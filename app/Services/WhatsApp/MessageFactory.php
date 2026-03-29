@@ -285,14 +285,14 @@ class MessageFactory
     public static function orderStatusText(string $orderNumber, string $status): string
     {
         $messages = [
-            'confirmed' => "Tu pedido #{$orderNumber} ha sido confirmado. Te avisaremos cuando este en preparacion.",
-            'in_preparation' => "Tu pedido #{$orderNumber} esta siendo preparado.",
-            'ready' => "Tu pedido #{$orderNumber} esta listo.",
-            'out_for_delivery' => "Tu pedido #{$orderNumber} esta en camino.",
-            'delivered' => "Tu pedido #{$orderNumber} ha sido entregado. Gracias por tu compra! Escribe cuando quieras pedir de nuevo.",
-            'cancelled' => "Tu pedido #{$orderNumber} ha sido cancelado. Puedes hacer un nuevo pedido cuando quieras.",
+            'confirmed' => "¡Tu pedido *#{$orderNumber}* fue confirmado! ✅ En breve comenzamos a prepararlo. Te avisamos cuando esté listo.",
+            'in_preparation' => "¡Buenas noticias! 👨‍🍳 Tu pedido *#{$orderNumber}* ya está en preparación. Un poco de paciencia, que pronto llega.",
+            'ready' => "📦 ¡Tu pedido *#{$orderNumber}* está listo! Ya en breve sale para donde estás.",
+            'out_for_delivery' => "🛵 ¡Tu pedido *#{$orderNumber}* ya salió! Va en camino hacia ti.",
+            'delivered' => "¡Tu pedido *#{$orderNumber}* fue entregado! 🎉 ¡Gracias por tu preferencia! Escríbenos cuando quieras pedir de nuevo.",
+            'cancelled' => "Tu pedido *#{$orderNumber}* fue cancelado. Si tienes dudas o quieres hacer otro pedido, escríbenos.",
         ];
 
-        return $messages[$status] ?? "Tu pedido #{$orderNumber} - estado: {$status}";
+        return $messages[$status] ?? "Tu pedido *#{$orderNumber}* — estado: {$status}";
     }
 }

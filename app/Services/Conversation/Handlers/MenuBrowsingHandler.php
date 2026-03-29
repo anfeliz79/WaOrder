@@ -24,7 +24,7 @@ class MenuBrowsingHandler implements HandlerInterface
         }
 
         // Handle button replies from greeting
-        if (in_array($lower, ['opt_menu', 'opt_order', 'ver el menu', 'hacer un pedido'])) {
+        if (in_array($lower, ['opt_menu', 'opt_order', 'ver el menu', 'hacer un pedido', 'hacer mi pedido', 'pedir'])) {
             $tenant = app('tenant');
             if ($tenant->getMenuSource() === 'external') {
                 return $this->showWebMenuLink($session, $tenant);
@@ -32,12 +32,17 @@ class MenuBrowsingHandler implements HandlerInterface
             return $this->showCategoriesList($menuService, $session);
         }
 
+        // Handle "Llamar al local" button from greeting
+        if ($lower === 'opt_call') {
+            return $this->handleCallRestaurant();
+        }
+
         if (in_array($lower, ['opt_status', 'estado de pedido'])) {
             return [
-                'response' => 'No tienes pedidos activos en este momento. Quieres ver el menu?',
+                'response' => 'No tienes pedidos activos ahora mismo. ¿Quieres ver el menú?',
                 'response_type' => 'buttons',
                 'buttons' => [
-                    ['id' => 'opt_menu', 'title' => 'Ver el menu'],
+                    ['id' => 'opt_order', 'title' => 'Hacer mi pedido'],
                 ],
             ];
         }
@@ -77,13 +82,39 @@ class MenuBrowsingHandler implements HandlerInterface
         return $this->showCategoriesList($menuService, $session);
     }
 
+    private function handleCallRestaurant(): array
+    {
+        $tenant = app('tenant');
+        $restaurantPhone = $tenant->getSetting('restaurant_phone');
+
+        if (!$restaurantPhone) {
+            return [
+                'response' => 'Por el momento no tenemos un número disponible, pero puedes escribirnos aquí mismo y te atendemos enseguida. 😊',
+                'response_type' => 'text',
+            ];
+        }
+
+        $cleanPhone = preg_replace('/[^0-9+]/', '', $restaurantPhone);
+        if (!str_starts_with($cleanPhone, '+')) {
+            $cleanPhone = '+' . $cleanPhone;
+        }
+
+        return [
+            'response' => '📞 Aquí tienes nuestro número directo:',
+            'response_type' => 'cta_url',
+            'cta_body' => '📞 Nuestro equipo está listo para atenderte. ¡Llámanos cuando quieras!',
+            'cta_button_text' => 'Llamar ahora',
+            'cta_url' => "tel:{$cleanPhone}",
+        ];
+    }
+
     private function showCategoriesList(MenuService $menuService, ChatSession $session): array
     {
         $categories = $menuService->getCategories();
 
         if (empty($categories)) {
             return [
-                'response' => 'Lo siento, el menu no esta disponible en este momento. Intenta mas tarde.',
+                'response' => 'Disculpa, el menú no está disponible en este momento. Intenta de nuevo en unos minutos. 🙏',
                 'response_type' => 'text',
             ];
         }
@@ -100,15 +131,15 @@ class MenuBrowsingHandler implements HandlerInterface
 
         $sections = [
             [
-                'title' => 'Categorias',
+                'title' => 'Categorías',
                 'rows' => $rows,
             ],
         ];
 
         return [
-            'response' => 'Explora nuestro menu y elige una categoria:',
+            'response' => '🍽️ Aquí está nuestro menú. Elige una categoría para ver los productos:',
             'response_type' => 'list',
-            'list_button_text' => 'Ver categorias',
+            'list_button_text' => 'Ver categorías',
             'list_sections' => $sections,
             'context_data' => array_merge($session->context_data ?? [], ['retry_count' => 0]),
         ];
@@ -125,10 +156,10 @@ class MenuBrowsingHandler implements HandlerInterface
         $menuUrl = $tokenService->buildMenuUrl($token);
 
         return [
-            'response' => 'Explora nuestro menu y agrega productos desde aqui:',
+            'response' => '🍽️ Explora nuestro menú y agrega lo que más te guste:',
             'response_type' => 'cta_url',
-            'cta_body' => 'Explora nuestro menu y agrega productos desde aqui:',
-            'cta_button_text' => 'Ver menu',
+            'cta_body' => '🍽️ Explora nuestro menú y agrega lo que más te guste:',
+            'cta_button_text' => 'Ver menú',
             'cta_url' => $menuUrl,
             'next_state' => 'cart_review',
             'context_data' => array_merge($session->context_data ?? [], ['retry_count' => 0, 'web_menu_token' => $token]),

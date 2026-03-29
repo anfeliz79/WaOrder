@@ -44,13 +44,13 @@ class NotificationService
         $order->loadMissing('driver');
         $driver = $order->driver;
 
-        $message = "🛵 Tu pedido #{$order->order_number} esta en camino!";
+        $message = "🛵 ¡Tu pedido *#{$order->order_number}* ya salió y va en camino hacia ti!";
 
         if ($driver) {
-            $message .= "\n\n👤 Tu mensajero: *{$driver->name}*";
+            $message .= "\n\n👤 Tu mensajero es *{$driver->name}*. Ya queda poco. 😊";
+        } else {
+            $message .= "\n\nYa queda poco. Te avisamos cuando sea entregado.";
         }
-
-        $message .= "\n\nTe avisaremos cuando sea entregado.";
 
         $buttons = null;
         if ($driver) {
@@ -146,8 +146,8 @@ class NotificationService
         }
 
         // Send delivery message + survey rating buttons in a single message
-        $message = "Tu pedido #{$order->order_number} ha sido entregado. Gracias por tu compra!\n\n"
-            . "Nos encantaria saber tu opinion. Del 1 al 5, como calificarias tu experiencia?";
+        $message = "¡Tu pedido *#{$order->order_number}* fue entregado! 🎉 ¡Gracias por elegirnos!\n\n"
+            . "Nos encantaría saber cómo te fue. ¿Cómo calificarías tu experiencia de hoy?";
 
         $buttons = [
             ['id' => 'rate_5', 'title' => "\u{2B50}\u{2B50}\u{2B50}\u{2B50}\u{2B50} (5)"],

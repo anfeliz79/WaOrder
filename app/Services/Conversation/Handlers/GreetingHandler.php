@@ -13,6 +13,8 @@ class GreetingHandler implements HandlerInterface
     {
         $tenant = app('tenant');
         $restaurantName = $tenant->name ?? 'nuestro restaurante';
+        $customerName = $session->customer?->name;
+        $hasPhone = !empty($tenant->getSetting('restaurant_phone'));
 
         // Check if customer has an active order
         $activeOrder = Order::where('customer_phone', $session->customer_phone)
@@ -22,19 +24,20 @@ class GreetingHandler implements HandlerInterface
 
         if ($activeOrder) {
             $statusLabels = [
-                'confirmed' => 'confirmado',
-                'in_preparation' => 'en preparacion',
-                'ready' => 'listo',
-                'out_for_delivery' => 'en camino',
+                'confirmed' => 'confirmado ✅',
+                'in_preparation' => 'en preparacion 👨‍🍳',
+                'ready' => 'listo para salir 📦',
+                'out_for_delivery' => 'en camino 🛵',
             ];
 
             $statusText = $statusLabels[$activeOrder->status] ?? $activeOrder->status;
+            $name = $customerName ? "¡Hola {$customerName}! 👋 " : '¡Hola! 👋 ';
 
             $result = [
-                'response' => "Hola! Tienes un pedido activo #{$activeOrder->order_number} ({$statusText}). Que deseas hacer?",
+                'response' => "{$name}Veo que tienes tu pedido *#{$activeOrder->order_number}* {$statusText}. ¿Qué deseas hacer?",
                 'response_type' => 'buttons',
                 'buttons' => [
-                    ['id' => 'active_status', 'title' => 'Ver mi pedido'],
+                    ['id' => 'active_status', 'title' => 'Ver estado'],
                     ['id' => 'active_new', 'title' => 'Nuevo pedido'],
                 ],
                 'next_state' => 'order_active',
@@ -49,10 +52,10 @@ class GreetingHandler implements HandlerInterface
             return $result;
         }
 
-        $customerName = $session->customer?->name;
+        // Greeting text — personalized for returning customers
         $greeting = $customerName
-            ? "Hola {$customerName}! Que gusto verte de nuevo por *{$restaurantName}*. Como podemos ayudarte hoy?"
-            : "Hola! Bienvenido a *{$restaurantName}*. Estamos para servirte, que te gustaria hacer?";
+            ? "¡Hola {$customerName}! 😊 Qué gusto tenerte de vuelta en *{$restaurantName}*. ¿Cómo te podemos ayudar?"
+            : "¡Hola! 👋 Bienvenido a *{$restaurantName}*. Qué bueno que estás aquí. ¿En qué te podemos ayudar?";
 
         // For external menus, send CTA URL button to open the web menu client
         if ($tenant->getMenuSource() === 'external') {
@@ -68,12 +71,13 @@ class GreetingHandler implements HandlerInterface
                 'response' => $greeting,
                 'response_type' => 'cta_url',
                 'cta_body' => $greeting,
-                'cta_button_text' => 'Ver menu',
+                'cta_button_text' => '🛒 Ver el menu',
                 'cta_url' => $menuUrl,
                 'next_state' => 'cart_review',
                 'context_data' => array_merge($session->context_data ?? [], ['web_menu_token' => $token]),
             ];
 
+            // Offer phone option as follow-up message
             $callCta = $this->buildCallCta($tenant);
             if ($callCta) {
                 $result['post_messages'] = [$callCta];
@@ -82,22 +86,21 @@ class GreetingHandler implements HandlerInterface
             return $result;
         }
 
-        $result = [
-            'response' => $greeting,
-            'response_type' => 'buttons',
-            'buttons' => [
-                ['id' => 'opt_menu', 'title' => 'Ver el menu'],
-                ['id' => 'opt_status', 'title' => 'Estado de pedido'],
-            ],
-            'next_state' => 'menu_browsing',
+        // Build main buttons: always offer ordering, optionally offer calling
+        $buttons = [
+            ['id' => 'opt_order', 'title' => 'Hacer mi pedido'],
         ];
 
-        $callCta = $this->buildCallCta($tenant);
-        if ($callCta) {
-            $result['post_messages'] = [$callCta];
+        if ($hasPhone) {
+            $buttons[] = ['id' => 'opt_call', 'title' => 'Llamar al local'];
         }
 
-        return $result;
+        return [
+            'response' => $greeting,
+            'response_type' => 'buttons',
+            'buttons' => $buttons,
+            'next_state' => 'menu_browsing',
+        ];
     }
 
     private function buildCallCta(mixed $tenant): ?array
@@ -115,8 +118,8 @@ class GreetingHandler implements HandlerInterface
 
         return [
             'type' => 'cta_url',
-            'body' => "\u{260E}\u{FE0F} Para llamar al restaurante:",
-            'button_text' => 'Llamar restaurante',
+            'body' => "📞 ¿Prefieres hablar con nosotros?",
+            'button_text' => 'Llamar al restaurante',
             'url' => "tel:{$cleanPhone}",
         ];
     }

@@ -23,13 +23,13 @@ class CartReviewHandler implements HandlerInterface
                 $cart['subtotal'] = array_sum(array_column($cart['items'], 'subtotal'));
                 $cart['total'] = $cart['subtotal'] + ($cart['delivery_fee'] ?? 0);
 
-                $response = "Eliminado: {$removed}";
+                $response = "✅ Eliminado: {$removed}";
 
                 if (empty($cart['items'])) {
                     return [
-                        'response' => $response . "\n\nTu carrito esta vacio.",
+                        'response' => $response . "\n\nTu carrito quedó vacío. ¿Quieres seguir explorando el menú?",
                         'response_type' => 'buttons',
-                        'buttons' => [['id' => 'opt_menu', 'title' => 'Ver el menu']],
+                        'buttons' => [['id' => 'opt_order', 'title' => 'Ver el menú']],
                         'cart_data' => $cart,
                         'next_state' => 'menu_browsing',
                         'context_data' => array_merge($session->context_data ?? [], ['awaiting_removal' => false]),
@@ -58,10 +58,10 @@ class CartReviewHandler implements HandlerInterface
                 $menuUrl = $tokenService->buildMenuUrl($token);
 
                 return [
-                    'response' => 'Agrega mas productos desde el menu:',
+                    'response' => '¡Claro! Agrega más productos desde el menú:',
                     'response_type' => 'cta_url',
-                    'cta_body' => 'Agrega mas productos desde el menu:',
-                    'cta_button_text' => 'Ver menu',
+                    'cta_body' => '🍽️ ¡Agrega más productos a tu pedido!',
+                    'cta_button_text' => 'Ver menú',
                     'cta_url' => $menuUrl,
                     'context_data' => array_merge($session->context_data ?? [], ['web_menu_token' => $token]),
                 ];
@@ -72,7 +72,7 @@ class CartReviewHandler implements HandlerInterface
 
             if (empty($categories)) {
                 return [
-                    'response' => 'El menu no esta disponible en este momento.',
+                    'response' => 'El menú no está disponible en este momento. Intenta de nuevo en unos minutos.',
                     'response_type' => 'text',
                 ];
             }
@@ -87,10 +87,10 @@ class CartReviewHandler implements HandlerInterface
             }
 
             return [
-                'response' => 'Selecciona una categoria para agregar mas productos:',
+                'response' => '🍽️ Elige una categoría para agregar más productos:',
                 'response_type' => 'list',
-                'list_button_text' => 'Ver categorias',
-                'list_sections' => [['title' => 'Categorias', 'rows' => $rows]],
+                'list_button_text' => 'Ver categorías',
+                'list_sections' => [['title' => 'Categorías', 'rows' => $rows]],
                 'next_state' => 'menu_browsing',
             ];
         }
@@ -99,7 +99,7 @@ class CartReviewHandler implements HandlerInterface
         if (in_array($message, ['cart_checkout', 'continuar', 'confirmar', 'confirmar pedido', 'pedir', 'continuar al pedido', 'checkout'])) {
             if (empty($cart['items'])) {
                 return [
-                    'response' => 'Tu carrito esta vacio. Agrega productos primero.',
+                    'response' => 'Tu carrito está vacío. Agrega productos primero. 😊',
                     'response_type' => 'text',
                     'next_state' => 'menu_browsing',
                 ];
@@ -113,7 +113,7 @@ class CartReviewHandler implements HandlerInterface
 
             if (empty($customerName)) {
                 return [
-                    'response' => 'Como te llamas?',
+                    'response' => '¿Cómo te llamas? 😊',
                     'response_type' => 'text',
                     'next_state' => 'collecting_info',
                     'context_data' => array_merge($session->context_data ?? [], ['awaiting_field' => 'name']),
@@ -126,11 +126,11 @@ class CartReviewHandler implements HandlerInterface
             }
 
             return [
-                'response' => 'Como deseas recibir tu pedido?',
+                'response' => '¿Cómo deseas recibir tu pedido?',
                 'response_type' => 'buttons',
                 'buttons' => [
-                    ['id' => 'info_delivery', 'title' => 'Delivery'],
-                    ['id' => 'info_pickup', 'title' => 'Pickup'],
+                    ['id' => 'info_delivery', 'title' => '🛵 Delivery'],
+                    ['id' => 'info_pickup', 'title' => '🏪 Recoger'],
                 ],
                 'next_state' => 'collecting_info',
                 'collected_info' => $info,
@@ -141,7 +141,7 @@ class CartReviewHandler implements HandlerInterface
         // Option 3b: Cancel everything and close session
         if (in_array($message, ['cart_cancel', 'cancelar', 'cancelar todo', 'cancelar pedido', 'cerrar', 'cerrar sesion', 'salir', 'no quiero'])) {
             return [
-                'response' => "Tu pedido ha sido cancelado. Si deseas ordenar de nuevo, solo escribe \"Hola\".",
+                'response' => "Tu pedido fue cancelado. 👍 No hay problema. Escríbenos cuando quieras pedir de nuevo.",
                 'response_type' => 'text',
                 'destroy_session' => true,
             ];
@@ -159,10 +159,10 @@ class CartReviewHandler implements HandlerInterface
         // Option 4: Clear cart
         if (in_array($message, ['4', 'vaciar', 'vaciar carrito', 'limpiar'])) {
             return [
-                'response' => 'Carrito vaciado. Que deseas hacer?',
+                'response' => 'Carrito vaciado. ¿Quieres ver el menú de nuevo?',
                 'response_type' => 'buttons',
                 'buttons' => [
-                    ['id' => 'opt_menu', 'title' => 'Ver el menu'],
+                    ['id' => 'opt_order', 'title' => 'Ver el menú'],
                 ],
                 'cart_data' => ['items' => [], 'subtotal' => 0, 'delivery_fee' => 0, 'total' => 0],
                 'next_state' => 'menu_browsing',
@@ -172,10 +172,10 @@ class CartReviewHandler implements HandlerInterface
         // Default: show cart again with buttons
         if (empty($cart['items'])) {
             return [
-                'response' => 'Tu carrito esta vacio.',
+                'response' => 'Tu carrito está vacío. 🛒',
                 'response_type' => 'buttons',
                 'buttons' => [
-                    ['id' => 'opt_menu', 'title' => 'Ver el menu'],
+                    ['id' => 'opt_order', 'title' => 'Ver el menú'],
                 ],
                 'next_state' => 'menu_browsing',
             ];
