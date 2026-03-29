@@ -101,8 +101,12 @@ step "Reiniciando PHP-FPM..."
 systemctl restart php8.4-fpm || systemctl restart php8.3-fpm || warn "No se pudo reiniciar PHP-FPM (verifica el servicio)"
 
 # ── Reiniciar workers ─────────────────────────────────────────────────────────
+# CRÍTICO: Los workers corren como proceso de larga vida con el código en memoria.
+# Sin este reinicio, los jobs seguirán ejecutando el código VIEJO aunque PHP-FPM
+# ya tenga el código nuevo. Usamos supervisorctl para reinicio inmediato.
 step "Reiniciando workers de cola..."
 php artisan queue:restart
+supervisorctl restart all 2>/dev/null || warn "supervisorctl no disponible — workers se recargarán en el próximo job"
 
 # ── Permisos ──────────────────────────────────────────────────────────────────
 step "Ajustando permisos..."
