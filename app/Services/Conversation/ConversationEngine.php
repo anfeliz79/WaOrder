@@ -65,16 +65,33 @@ class ConversationEngine
             }
         }
 
-        // Global cancel: if user asks to cancel mid-session (any state except order_active)
-        $cancelKeywords = ['cancelar todo', 'cancelar pedido', 'cerrar sesion', 'salir', 'empezar de nuevo'];
         $msgLower = mb_strtolower(trim($message));
+
+        // Global greeting reset: si el usuario saluda desde cualquier estado intermedio
+        // (cart_review, collecting_info, etc.), destruir la sesión y empezar de cero.
+        // NO aplica en order_active (tiene pedido en curso) ni en survey (esperando rating).
+        $greetingKeywords = ['hola', 'hi', 'hello', 'buenas', 'hey', 'ola', 'inicio', 'start', 'comenzar', 'reiniciar'];
+        $isGreeting = in_array($msgLower, $greetingKeywords)
+            || (bool) preg_match('/^(hola|buenas|buenos)\b/iu', $msgLower);
+
+        if (
+            $isGreeting
+            && !in_array($state, ['greeting', 'order_active', 'survey'])
+        ) {
+            $this->sessionManager->destroy($session);
+            $session = $this->sessionManager->create($session->tenant_id, $session->customer_phone);
+            $state = 'greeting';
+        }
+
+        // Global cancel: si el usuario quiere cancelar desde cualquier estado intermedio
+        $cancelKeywords = ['cancelar todo', 'cancelar pedido', 'cerrar sesion', 'salir', 'empezar de nuevo'];
         if (
             in_array($state, ['cart_review', 'menu_browsing', 'item_selection', 'modifier_selection', 'collecting_info', 'confirmation'])
             && in_array($msgLower, $cancelKeywords)
         ) {
             $this->sessionManager->destroy($session);
             return [
-                'response' => "Tu pedido ha sido cancelado. Si deseas ordenar de nuevo, solo escribe \"Hola\".",
+                'response' => "Tu pedido fue cancelado. 👍 Escríbenos cuando quieras pedir de nuevo.",
                 'response_type' => 'text',
                 'buttons' => null,
                 'list_button_text' => null,
