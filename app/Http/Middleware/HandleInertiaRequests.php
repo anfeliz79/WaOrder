@@ -47,9 +47,13 @@ class HandleInertiaRequests extends Middleware
                 }
 
                 // Permissions based on role
-                $permissions = $user->isAdmin()
-                    ? ['*']
-                    : ['dashboard.view', 'orders.view', 'orders.manage', 'customers.view'];
+                if ($user->isAdmin()) {
+                    $permissions = ['*'];
+                } elseif ($user->isOrderTaker()) {
+                    $permissions = ['console.view', 'orders.view', 'orders.manage'];
+                } else {
+                    $permissions = ['dashboard.view', 'orders.view', 'orders.manage', 'customers.view'];
+                }
             }
         }
 

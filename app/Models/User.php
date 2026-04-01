@@ -43,6 +43,11 @@ class User extends Authenticatable
         return $this->role === 'gestor';
     }
 
+    public function isOrderTaker(): bool
+    {
+        return $this->role === 'order_taker';
+    }
+
     /**
      * Check if user can access a specific branch.
      * Admins can access all branches within their tenant.

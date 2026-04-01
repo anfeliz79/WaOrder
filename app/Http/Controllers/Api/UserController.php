@@ -49,7 +49,7 @@ class UserController extends Controller
                 Rule::unique('users')->where('tenant_id', $tenant->id),
             ],
             'password' => 'required|string|min:6',
-            'role' => 'required|in:admin,gestor',
+            'role' => 'required|in:admin,gestor,order_taker',
             'branch_ids' => 'required|array|min:1',
             'branch_ids.*' => 'integer|exists:branches,id',
         ]);
@@ -78,7 +78,7 @@ class UserController extends Controller
                 Rule::unique('users')->where('tenant_id', $tenant->id)->ignore($user->id),
             ],
             'password' => 'nullable|string|min:6',
-            'role' => 'sometimes|in:admin,gestor',
+            'role' => 'sometimes|in:admin,gestor,order_taker',
             'branch_ids' => 'sometimes|array|min:1',
             'branch_ids.*' => 'integer|exists:branches,id',
             'is_active' => 'sometimes|boolean',

@@ -4,10 +4,11 @@ import { MapPin, Phone } from 'lucide-vue-next';
 
 const props = defineProps({
     branches: Array,
+    next: { type: String, default: 'dashboard' },
 });
 
 const selectBranch = (branchId) => {
-    router.post('/select-branch', { branch_id: branchId });
+    router.post('/select-branch', { branch_id: branchId, next: props.next });
 };
 </script>
 

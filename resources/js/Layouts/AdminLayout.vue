@@ -27,6 +27,7 @@ import {
     ChevronDown,
     ChevronsUpDown,
     CreditCard,
+    MonitorDot,
 } from 'lucide-vue-next';
 import AppToast from '@/Components/AppToast.vue';
 import { useToast } from '@/Composables/useToast';
@@ -61,6 +62,7 @@ const isAdmin = computed(() => user.value?.role === 'admin');
 
 const allNavigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.view' },
+    { name: 'Consola', href: '/console', icon: MonitorDot, permission: 'orders.manage' },
     { name: 'Ordenes', href: '/orders', icon: ClipboardList, permission: 'orders.view' },
     { name: 'Menu', href: '/menu', icon: BookOpen, permission: 'menu.manage' },
     { name: 'Clientes', href: '/customers', icon: Users, permission: 'customers.view' },

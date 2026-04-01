@@ -94,7 +94,7 @@ export function useOrderNotification() {
                 toast.info(count === 1 ? '🛒 Nueva orden recibida' : `🛒 ${count} nuevas órdenes recibidas`);
 
                 // Auto-reload if on the orders or dashboard page
-                if (page.url.startsWith('/orders') || page.url.startsWith('/dashboard')) {
+                if (page.url.startsWith('/orders') || page.url.startsWith('/dashboard') || page.url.startsWith('/console')) {
                     router.reload({ preserveScroll: true });
                 }
             }

@@ -2,7 +2,7 @@
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
-import { UserPlus, Pencil, UserX, Shield, ClipboardList } from 'lucide-vue-next';
+import { UserPlus, Pencil, UserX, Shield, ClipboardList, MonitorDot } from 'lucide-vue-next';
 import AppButton from '@/Components/AppButton.vue';
 import AppInput from '@/Components/AppInput.vue';
 import AppSelect from '@/Components/AppSelect.vue';
@@ -28,11 +28,19 @@ const deleteTarget = ref(null);
 const roleLabels = {
     admin: 'Administrador',
     gestor: 'Gestor de Pedidos',
+    order_taker: 'Operador de Consola',
+};
+
+const roleIcons = {
+    admin: Shield,
+    gestor: ClipboardList,
+    order_taker: MonitorDot,
 };
 
 const roleOptions = [
     { value: 'admin', label: 'Administrador' },
     { value: 'gestor', label: 'Gestor de Pedidos' },
+    { value: 'order_taker', label: 'Operador de Consola' },
 ];
 
 const form = useForm({
@@ -142,8 +150,8 @@ const toggleBranch = (formRef, branchId) => {
                             </td>
                             <td class="py-3 px-4 text-gray-600">{{ user.email }}</td>
                             <td class="py-3 px-4">
-                                <AppBadge :variant="user.role === 'admin' ? 'primary' : 'default'" size="sm">
-                                    <component :is="user.role === 'admin' ? Shield : ClipboardList" class="w-3 h-3 mr-1" />
+                                <AppBadge :variant="user.role === 'admin' ? 'primary' : user.role === 'order_taker' ? 'emerald' : 'default'" size="sm">
+                                    <component :is="roleIcons[user.role] || ClipboardList" class="w-3 h-3 mr-1" />
                                     {{ roleLabels[user.role] || user.role }}
                                 </AppBadge>
                             </td>

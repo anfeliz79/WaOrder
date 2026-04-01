@@ -18,6 +18,7 @@ use App\Http\Controllers\SuperAdmin\SettingsController as SuperAdminSettingsCont
 use App\Http\Controllers\SuperAdmin\TenantController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\OrderConsoleController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -47,20 +48,27 @@ Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class])->group(f
     Route::post('/switch-branch', [AuthController::class, 'switchBranch']);
 });
 
-// Panel (requires auth + tenant) — accessible by admin + gestor
+// Order Console (accessible by admin, gestor, order_taker)
 Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class, \App\Http\Middleware\EnsureSetupComplete::class])->group(function () {
+    Route::get('/console', [OrderConsoleController::class, 'index']);
+
+    // Order actions (shared between admin panel and console)
+    Route::get('/orders/latest-id', [OrderController::class, 'latestId']);
+    Route::put('/orders/{order}/status', [OrderController::class, 'updateStatus']);
+    Route::post('/orders/{order}/assign-driver', [OrderController::class, 'assignDriver']);
+    Route::patch('/orders/{order}/delivery-address', [OrderController::class, 'updateDeliveryAddress']);
+    Route::post('/orders/{order}/send-to-driver', [OrderController::class, 'sendToDriver']);
+});
+
+// Panel (requires auth + tenant) — accessible by admin + gestor (NOT order_taker)
+Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class, \App\Http\Middleware\EnsureSetupComplete::class, 'not_order_taker'])->group(function () {
     // Root redirect for authenticated users (landing handles guest → blade view)
     Route::get('/home', fn () => redirect('/dashboard'));
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
     // Orders (admin + gestor)
-    Route::get('/orders/latest-id', [OrderController::class, 'latestId']);
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{order}', [OrderController::class, 'show']);
-    Route::put('/orders/{order}/status', [OrderController::class, 'updateStatus']);
-    Route::post('/orders/{order}/assign-driver', [OrderController::class, 'assignDriver']);
-    Route::patch('/orders/{order}/delivery-address', [OrderController::class, 'updateDeliveryAddress']);
-    Route::post('/orders/{order}/send-to-driver', [OrderController::class, 'sendToDriver']);
 
     // Customers (admin + gestor)
     Route::get('/customers', [CustomerController::class, 'index']);

@@ -49,6 +49,18 @@ class AuthController extends Controller
         // Determine branches the user can access
         $branches = $this->getAccessibleBranches($user);
 
+        // Order taker: redirect to console
+        if ($user->isOrderTaker()) {
+            if ($branches->count() === 1) {
+                session(['current_branch_id' => $branches->first()->id]);
+                return redirect()->intended('/console');
+            }
+            if ($branches->count() > 1) {
+                return redirect('/select-branch?next=console');
+            }
+            return redirect()->intended('/console');
+        }
+
         if ($branches->count() === 1) {
             session(['current_branch_id' => $branches->first()->id]);
             return redirect()->intended('/dashboard');
@@ -66,12 +78,13 @@ class AuthController extends Controller
     {
         $user = $request->user();
         $branches = $this->getAccessibleBranches($user);
+        $next = $request->query('next', $user->isOrderTaker() ? 'console' : 'dashboard');
 
         if ($branches->count() <= 1) {
             if ($branches->count() === 1) {
                 session(['current_branch_id' => $branches->first()->id]);
             }
-            return redirect('/dashboard');
+            return redirect('/' . $next);
         }
 
         return Inertia::render('Auth/SelectBranch', [
@@ -81,6 +94,7 @@ class AuthController extends Controller
                 'address' => $b->address,
                 'phone' => $b->phone,
             ]),
+            'next' => $next,
         ]);
     }
 
@@ -88,6 +102,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'branch_id' => 'required|integer',
+            'next' => 'nullable|string|in:dashboard,console',
         ]);
 
         $user = $request->user();
@@ -98,7 +113,9 @@ class AuthController extends Controller
 
         session(['current_branch_id' => $request->branch_id]);
 
-        return redirect('/dashboard');
+        $next = $request->input('next', $user->isOrderTaker() ? 'console' : 'dashboard');
+
+        return redirect('/' . $next);
     }
 
     public function switchBranch(Request $request)
