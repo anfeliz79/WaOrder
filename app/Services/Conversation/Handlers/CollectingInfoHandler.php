@@ -3,6 +3,7 @@
 namespace App\Services\Conversation\Handlers;
 
 use App\Models\ChatSession;
+use App\Services\AI\AiIntentService;
 use App\Services\Branch\BranchRouter;
 
 class CollectingInfoHandler implements HandlerInterface
@@ -385,8 +386,37 @@ class CollectingInfoHandler implements HandlerInterface
                 ];
             }
 
+            // AI fallback: interpret natural language delivery preference
+            $ai = app(AiIntentService::class);
+            $aiDelivery = $ai->interpretDeliveryType($message);
+
+            if ($aiDelivery === 'delivery') {
+                $info['delivery_type'] = 'delivery';
+                return [
+                    'response' => "¡Perfecto! 🛵 Para verificar que llegamos a tu zona, *comparte tu ubicación de WhatsApp*.\n\n📍 Toca el clip de adjuntos → *Ubicación* → *Enviar mi ubicación actual*.",
+                    'response_type' => 'text',
+                    'collected_info' => $info,
+                    'context_data' => array_merge($context, ['awaiting_field' => 'address']),
+                ];
+            }
+
+            if ($aiDelivery === 'pickup') {
+                $info['delivery_type'] = 'pickup';
+                return [
+                    'response' => "¡Claro! 🏪 Para recomendarte la sucursal más cercana, comparte tu ubicación de WhatsApp:",
+                    'response_type' => 'buttons',
+                    'buttons' => [
+                        ['id' => 'info_skip_location', 'title' => 'Ver todas'],
+                    ],
+                    'collected_info' => $info,
+                    'context_data' => array_merge($context, ['awaiting_field' => 'pickup_location']),
+                ];
+            }
+
+            $guideText = $ai->guideUser($message, 'delivery_type', 'elegir si quiere delivery a domicilio o recoger en tienda');
+
             return [
-                'response' => '¿Cómo prefieres recibir tu pedido?',
+                'response' => $guideText ?? '¿Cómo prefieres recibir tu pedido?',
                 'response_type' => 'buttons',
                 'buttons' => [
                     ['id' => 'info_delivery', 'title' => '🛵 Delivery'],
@@ -551,6 +581,35 @@ class CollectingInfoHandler implements HandlerInterface
                 return $this->buildBranchSelectionResponse($info, $context, $branchesWithDistance);
             }
 
+            // AI fallback: interpret natural language preference
+            $ai = app(AiIntentService::class);
+            $aiChoice = $ai->interpretAddressRetry($message);
+
+            if ($aiChoice === 'retry') {
+                return [
+                    'response' => "Toca el clip de adjuntos → *Ubicación* → *Enviar mi ubicación actual* para intentar con otra zona. 📍",
+                    'response_type' => 'text',
+                    'collected_info' => $info,
+                    'context_data' => array_merge($context, ['awaiting_field' => 'address']),
+                ];
+            }
+
+            if ($aiChoice === 'pickup') {
+                $info['delivery_type'] = 'pickup';
+                $branchesWithDistance = null;
+                if (!empty($info['latitude']) && !empty($info['longitude'])) {
+                    $tenant = app('tenant');
+                    $branchRouter = app(BranchRouter::class);
+                    $branchesWithDistance = $branchRouter->getAllSortedByDistance(
+                        $tenant->id,
+                        (float) $info['latitude'],
+                        (float) $info['longitude']
+                    );
+                }
+                unset($info['address'], $info['latitude'], $info['longitude']);
+                return $this->buildBranchSelectionResponse($info, $context, $branchesWithDistance);
+            }
+
             return [
                 'response' => '¿Qué prefieres hacer?',
                 'response_type' => 'buttons',
@@ -580,6 +639,12 @@ class CollectingInfoHandler implements HandlerInterface
         // Collect payment method
         if ($awaitingField === 'payment_method') {
             $selectedMethod = $this->parsePaymentSelection($message);
+
+            if (!$selectedMethod) {
+                // AI fallback: interpret natural language payment preference
+                $ai = app(AiIntentService::class);
+                $selectedMethod = $ai->interpretPaymentMethod($message, $this->getEnabledPaymentMethods());
+            }
 
             if (!$selectedMethod) {
                 $interaction = $this->buildPaymentInteraction();
@@ -650,8 +715,16 @@ class CollectingInfoHandler implements HandlerInterface
             ];
         }
 
+        // AI-guided fallback: the user said something unexpected at an unknown step
+        $ai = app(AiIntentService::class);
+        $stepHint = $awaitingField
+            ? "completar el campo '{$awaitingField}' del pedido"
+            : 'continuar con el proceso de pedido';
+
+        $guidedResponse = $ai->guideUser($message, $awaitingField ?? 'unknown', $stepHint);
+
         return [
-            'response' => 'Lo siento, no entendi. Por favor intenta de nuevo.',
+            'response' => $guidedResponse ?? 'Lo siento, no entendí. Por favor intenta de nuevo.',
             'response_type' => 'text',
         ];
     }

@@ -4,6 +4,7 @@ namespace App\Services\Conversation\Handlers;
 
 use App\Models\ChatSession;
 use App\Models\Tenant;
+use App\Services\AI\AiIntentService;
 use App\Services\Order\OrderFactory;
 use App\Services\WhatsApp\MessageFactory;
 
@@ -86,6 +87,20 @@ class ConfirmationHandler implements HandlerInterface
                     'notes' => null,
                 ],
             ];
+        }
+
+        // AI fallback: interpret natural language confirmation intent
+        $ai = app(AiIntentService::class);
+        $intent = $ai->interpretConfirmation($message);
+
+        if ($intent === 'confirm') {
+            return $this->handle($session, 'confirm_yes', $messageType);
+        }
+        if ($intent === 'modify') {
+            return $this->handle($session, 'confirm_modify', $messageType);
+        }
+        if ($intent === 'cancel') {
+            return $this->handle($session, 'confirm_cancel', $messageType);
         }
 
         return [
