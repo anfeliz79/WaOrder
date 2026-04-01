@@ -27,6 +27,7 @@ import {
     LogOut,
     ChevronDown,
     ChevronsUpDown,
+    CreditCard,
 } from 'lucide-vue-next';
 import AppToast from '@/Components/AppToast.vue';
 import { useToast } from '@/Composables/useToast';
@@ -68,6 +69,7 @@ const allNavigation = [
     { name: 'Sucursales', href: '/branches', icon: Building2, permission: 'branches.manage' },
     { name: 'Usuarios', href: '/users', icon: UsersRound, permission: 'users.manage' },
     { name: 'Resenas', href: '/reviews', icon: Star, permission: 'reviews.view' },
+    { name: 'Facturacion', href: '/billing', icon: CreditCard, permission: 'settings.manage' },
     { name: 'Configuracion', href: '/settings', icon: Settings, permission: 'settings.manage' },
     { name: 'Sistema', href: '/system', icon: Server, permission: 'settings.manage' },
 ];

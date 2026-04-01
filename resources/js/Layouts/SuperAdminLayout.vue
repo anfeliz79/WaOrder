@@ -3,7 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { Link, Head, router, usePage } from '@inertiajs/vue3'
 import {
     LayoutDashboard, Store, LogOut, Menu, X,
-    ChevronRight, Shield
+    ChevronRight, Shield, CreditCard
 } from 'lucide-vue-next'
 
 defineProps({
@@ -20,6 +20,7 @@ const showFlash = ref(false)
 const navItems = [
     { name: 'Dashboard', href: '/superadmin', icon: LayoutDashboard },
     { name: 'Restaurantes', href: '/superadmin/tenants', icon: Store },
+    { name: 'Planes', href: '/superadmin/plans', icon: CreditCard },
 ]
 
 const isActive = (href) => {

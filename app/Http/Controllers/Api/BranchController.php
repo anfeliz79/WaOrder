@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
+use App\Services\Subscription\PlanEnforcement;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -25,8 +26,13 @@ class BranchController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, PlanEnforcement $enforcement)
     {
+        $check = $enforcement->canCreateBranch(app('tenant'));
+        if ($check !== true) {
+            return back()->with('error', $check);
+        }
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'address' => 'required|string|max:500',

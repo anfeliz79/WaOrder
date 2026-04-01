@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \App\Http\Middleware\ResolveBranch::class,
+            \App\Http\Middleware\SharePlanData::class,
         ]);
 
         $middleware->api(prepend: [

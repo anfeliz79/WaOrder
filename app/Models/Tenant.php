@@ -3,14 +3,16 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Tenant extends Model
 {
     protected $fillable = [
         'name', 'slug', 'whatsapp_phone_number_id', 'whatsapp_business_account_id',
         'whatsapp_access_token', 'whatsapp_app_secret', 'ai_api_key', 'timezone', 'currency', 'locale', 'settings',
-        'subscription_plan', 'subscription_expires_at', 'is_active',
+        'subscription_plan', 'subscription_expires_at', 'plan_id', 'is_active',
     ];
 
     protected $hidden = [
@@ -59,6 +61,31 @@ class Tenant extends Model
     public function chatSessions(): HasMany
     {
         return $this->hasMany(ChatSession::class);
+    }
+
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(Plan::class);
+    }
+
+    public function subscription(): HasOne
+    {
+        return $this->hasOne(Subscription::class);
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function cardnetTokens(): HasMany
+    {
+        return $this->hasMany(CardnetToken::class);
+    }
+
+    public function defaultCardnetToken(): HasOne
+    {
+        return $this->hasOne(CardnetToken::class)->where('is_default', true)->where('is_active', true);
     }
 
     public function isAiEnabled(): bool

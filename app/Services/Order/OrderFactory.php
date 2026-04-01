@@ -2,14 +2,17 @@
 
 namespace App\Services\Order;
 
+use App\Jobs\CreateCardnetPaymentSession;
 use App\Models\Branch;
 use App\Models\ChatSession;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
+use App\Models\Payment;
 use App\Models\Tenant;
 use App\Services\Branch\BranchRouter;
+use App\Services\Subscription\PlanEnforcement;
 use Illuminate\Support\Facades\DB;
 
 class OrderFactory
@@ -20,6 +23,12 @@ class OrderFactory
 
     public function createFromSession(ChatSession $session, Tenant $tenant): Order
     {
+        // Check order limit before creating
+        $check = app(PlanEnforcement::class)->canAcceptOrder($tenant);
+        if ($check !== true) {
+            throw new \App\Exceptions\PlanLimitExceededException($check);
+        }
+
         return DB::transaction(function () use ($session, $tenant) {
             $cartData = $session->cart_data;
             $info = $session->collected_info;
@@ -89,6 +98,21 @@ class OrderFactory
                 'changed_by_type' => 'system',
                 'note' => 'Orden creada desde WhatsApp',
             ]);
+
+            // Create pending payment + Cardnet session for card payments
+            if (in_array($order->payment_method, ['cardnet', 'card', 'card_online'])) {
+                Payment::create([
+                    'tenant_id' => $tenant->id,
+                    'order_id' => $order->id,
+                    'method' => 'card',
+                    'status' => 'pending',
+                    'amount' => $order->total,
+                    'gateway' => 'cardnet',
+                ]);
+
+                CreateCardnetPaymentSession::dispatch($order->id, $tenant->id)
+                    ->delay(now()->addSeconds(2));
+            }
 
             // Update customer stats
             if ($session->customer) {

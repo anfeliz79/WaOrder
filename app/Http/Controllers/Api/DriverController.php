@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Driver;
+use App\Services\Subscription\PlanEnforcement;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -38,8 +39,13 @@ class DriverController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, PlanEnforcement $enforcement)
     {
+        $check = $enforcement->canCreateDriver(app('tenant'));
+        if ($check !== true) {
+            return back()->with('error', $check);
+        }
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',

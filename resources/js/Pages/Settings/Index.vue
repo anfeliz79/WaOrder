@@ -72,13 +72,18 @@ const paymentForm = useForm({
                 instructions: props.tenant?.settings?.payment?.card_link?.instructions || '',
             },
             custom_methods: props.tenant?.settings?.payment?.custom_methods || {},
+            cardnet: {
+                public_key: props.tenant?.settings?.payment?.cardnet?.public_key || '',
+                private_key: props.tenant?.settings?.payment?.cardnet?.private_key || '',
+                commerce_id: props.tenant?.settings?.payment?.cardnet?.commerce_id || '',
+            },
         },
     },
 });
 
 const newMethodName = ref('');
 const newMethodError = ref('');
-const builtInKeys = ['cash', 'transfer', 'card_link'];
+const builtInKeys = ['cash', 'transfer', 'card_link', 'cardnet'];
 
 const slugify = (name) => {
     return name.toLowerCase().trim()
@@ -1092,7 +1097,13 @@ const previewName = computed(() => props.tenant?.name || 'Mi Restaurante');
                             <input type="checkbox" :checked="paymentForm.settings.payment.methods.includes('card_link')"
                                    @change="togglePaymentMethod('card_link')"
                                    class="rounded text-primary-600 focus:ring-primary-500" />
-                            <span class="text-sm font-medium text-gray-700">Pago con link (Cardnet/Azul)</span>
+                            <span class="text-sm font-medium text-gray-700">Pago con link (manual)</span>
+                        </label>
+                        <label class="flex items-center gap-3">
+                            <input type="checkbox" :checked="paymentForm.settings.payment.methods.includes('cardnet')"
+                                   @change="togglePaymentMethod('cardnet')"
+                                   class="rounded text-primary-600 focus:ring-primary-500" />
+                            <span class="text-sm font-medium text-gray-700">Tarjeta de credito/debito (Cardnet)</span>
                         </label>
 
                         <!-- Custom Methods -->
@@ -1160,6 +1171,33 @@ const previewName = computed(() => props.tenant?.name || 'Mi Restaurante');
                             <textarea v-model="paymentForm.settings.payment.card_link.instructions" rows="3"
                                       placeholder="Paga con tu tarjeta en el siguiente enlace"
                                       class="w-full px-3 py-2 border rounded-lg"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cardnet API Config -->
+                <div v-if="paymentForm.settings.payment.methods.includes('cardnet')"
+                     class="bg-white rounded-xl shadow-sm border p-6">
+                    <h2 class="text-lg font-semibold mb-4">Configuracion Cardnet</h2>
+                    <p class="text-sm text-gray-500 mb-4">Credenciales de tu cuenta Cardnet para procesar pagos con tarjeta. Obtenlas desde el portal de comercios de Cardnet.</p>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Commerce ID</label>
+                            <input v-model="paymentForm.settings.payment.cardnet.commerce_id" type="text"
+                                   placeholder="Tu ID de comercio"
+                                   class="w-full px-3 py-2 border rounded-lg" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Public Key</label>
+                            <input v-model="paymentForm.settings.payment.cardnet.public_key" type="text"
+                                   placeholder="pk_..."
+                                   class="w-full px-3 py-2 border rounded-lg" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Private Key</label>
+                            <input v-model="paymentForm.settings.payment.cardnet.private_key" type="password"
+                                   placeholder="sk_..."
+                                   class="w-full px-3 py-2 border rounded-lg" />
                         </div>
                     </div>
                 </div>

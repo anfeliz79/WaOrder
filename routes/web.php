@@ -13,9 +13,20 @@ use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
+use App\Http\Controllers\SuperAdmin\PlanController;
 use App\Http\Controllers\SuperAdmin\TenantController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\LandingController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+// Landing page (public)
+Route::get('/', [LandingController::class, 'index'])->name('landing');
+
+// Payment pages (public, no auth)
+Route::get('/pay/{uuid}', [\App\Http\Controllers\Payment\CardnetPaymentController::class, 'show']);
+Route::get('/pay/{uuid}/success', [\App\Http\Controllers\Payment\CardnetPaymentController::class, 'success']);
+Route::get('/pay/{uuid}/cancel', [\App\Http\Controllers\Payment\CardnetPaymentController::class, 'cancel']);
 
 // Public menu pages (no auth required - accessed from WhatsApp)
 Route::get('/m/{token}', fn (string $token) => view('menu-item', ['token' => $token]));
@@ -24,6 +35,8 @@ Route::get('/menu/{token}', fn (string $token) => view('menu-browse', ['token' =
 // Auth routes
 Route::get('/login', fn () => Inertia::render('Auth/Login'))->name('login')->middleware('guest');
 Route::post('/login', [AuthController::class, 'login'])->middleware('guest');
+Route::get('/register', [RegisterController::class, 'showForm'])->name('register')->middleware('guest');
+Route::post('/register', [RegisterController::class, 'register'])->middleware('guest');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth');
 
 // Branch selection (after login, before full admin access)
@@ -35,7 +48,8 @@ Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class])->group(f
 
 // Panel (requires auth + tenant) — accessible by admin + gestor
 Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class, \App\Http\Middleware\EnsureSetupComplete::class])->group(function () {
-    Route::get('/', fn () => redirect('/dashboard'));
+    // Root redirect for authenticated users (landing handles guest → blade view)
+    Route::get('/home', fn () => redirect('/dashboard'));
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
     // Orders (admin + gestor)
@@ -50,6 +64,14 @@ Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class, \App\Http
     // Customers (admin + gestor)
     Route::get('/customers', [CustomerController::class, 'index']);
     Route::get('/customers/{customer}', [CustomerController::class, 'show']);
+
+    // Billing (admin only, before general admin group)
+    Route::middleware('admin')->group(function () {
+        Route::get('/billing', [\App\Http\Controllers\Api\BillingController::class, 'index']);
+        Route::post('/billing/change-plan', [\App\Http\Controllers\Api\BillingController::class, 'changePlan']);
+        Route::post('/billing/cancel', [\App\Http\Controllers\Api\BillingController::class, 'cancel']);
+        Route::post('/billing/reactivate', [\App\Http\Controllers\Api\BillingController::class, 'reactivate']);
+    });
 
     // Admin-only routes
     Route::middleware('admin')->group(function () {
@@ -130,4 +152,13 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
     Route::put('/tenants/{id}', [TenantController::class, 'update'])->name('tenants.update');
     Route::post('/tenants/{id}/toggle-active', [TenantController::class, 'toggleActive'])->name('tenants.toggle-active');
     Route::delete('/tenants/{id}', [TenantController::class, 'destroy'])->name('tenants.destroy');
+
+    // Plans
+    Route::get('/plans', [PlanController::class, 'index'])->name('plans.index');
+    Route::get('/plans/create', [PlanController::class, 'create'])->name('plans.create');
+    Route::post('/plans', [PlanController::class, 'store'])->name('plans.store');
+    Route::get('/plans/{id}/edit', [PlanController::class, 'edit'])->name('plans.edit');
+    Route::put('/plans/{id}', [PlanController::class, 'update'])->name('plans.update');
+    Route::post('/plans/{id}/toggle-active', [PlanController::class, 'toggleActive'])->name('plans.toggle-active');
+    Route::delete('/plans/{id}', [PlanController::class, 'destroy'])->name('plans.destroy');
 });

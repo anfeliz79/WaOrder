@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MenuItem;
+use App\Services\Subscription\PlanEnforcement;
 use Illuminate\Http\Request;
 
 class MenuItemController extends Controller
@@ -23,8 +24,13 @@ class MenuItemController extends Controller
         return response()->json($query->orderBy('sort_order')->get());
     }
 
-    public function store(Request $request)
+    public function store(Request $request, PlanEnforcement $enforcement)
     {
+        $check = $enforcement->canCreateMenuItem(app('tenant'));
+        if ($check !== true) {
+            return back()->with('error', $check);
+        }
+
         $data = $request->validate([
             'category_id' => 'required|exists:menu_categories,id',
             'name' => 'required|string|max:255',

@@ -20,6 +20,7 @@ class CollectingInfoHandler implements HandlerInterface
             'cash' => 'Efectivo',
             'transfer' => 'Transferencia',
             'card_link' => 'Pago con link',
+            'cardnet' => 'Tarjeta de credito/debito',
         ];
 
         $enabled = [];
@@ -118,7 +119,8 @@ class CollectingInfoHandler implements HandlerInterface
         $aliases = [
             'cash' => ['efectivo', 'cash'],
             'transfer' => ['transferencia', 'transfer'],
-            'card_link' => ['link', 'pago con link', 'card_link', 'tarjeta'],
+            'card_link' => ['link', 'pago con link', 'card_link'],
+            'cardnet' => ['tarjeta', 'cardnet', 'card', 'pago con tarjeta', 'tarjeta de credito', 'tarjeta de debito'],
         ];
 
         foreach ($aliases as $method => $words) {
@@ -165,6 +167,10 @@ class CollectingInfoHandler implements HandlerInterface
 
                 return implode("\n", $lines);
             }
+        }
+
+        if ($method === 'cardnet') {
+            return "Recibiras un enlace de pago seguro para completar el pago con tu tarjeta una vez confirmado el pedido.";
         }
 
         if ($method === 'card_link') {

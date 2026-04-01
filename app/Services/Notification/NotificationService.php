@@ -77,6 +77,48 @@ class NotificationService
         $this->notifyCustomerStatusChange($order, 'confirmed');
     }
 
+    /**
+     * Send a payment link to the customer via WhatsApp CTA URL button.
+     */
+    public function sendPaymentLink(Order $order, Tenant $tenant, string $paymentUrl): void
+    {
+        $message = "Para completar tu pedido *#{$order->order_number}*, realiza el pago con tarjeta a traves del siguiente enlace.\n\n"
+            . "Total: *" . number_format($order->total, 2) . " {$tenant->currency}*\n\n"
+            . "El enlace expira en 30 minutos.";
+
+        // Send as text with URL (WhatsApp Cloud API doesn't support CTA URL buttons in regular messages)
+        $messageWithLink = $message . "\n\n" . $paymentUrl;
+
+        SendWhatsAppNotification::dispatch(
+            $order->tenant_id,
+            $order->customer_phone,
+            $messageWithLink,
+        );
+
+        Log::info('Payment link sent to customer', [
+            'order_id' => $order->id,
+            'url' => $paymentUrl,
+        ]);
+    }
+
+    /**
+     * Send payment confirmation to the customer.
+     */
+    public function sendPaymentConfirmation(Order $order, Tenant $tenant): void
+    {
+        $message = "¡Pago recibido! Tu pedido *#{$order->order_number}* por *"
+            . number_format($order->total, 2) . " {$tenant->currency}* ha sido pagado exitosamente.\n\n"
+            . "Estamos preparando tu pedido.";
+
+        SendWhatsAppNotification::dispatch(
+            $order->tenant_id,
+            $order->customer_phone,
+            $message,
+        );
+
+        Log::info('Payment confirmation sent', ['order_id' => $order->id]);
+    }
+
     private function sendDeliveryWithSurvey(Order $order): void
     {
         $tenant = Tenant::find($order->tenant_id);

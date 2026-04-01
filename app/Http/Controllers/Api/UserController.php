@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\User;
+use App\Services\Subscription\PlanEnforcement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -32,9 +33,14 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, PlanEnforcement $enforcement)
     {
         $tenant = app('tenant');
+
+        $check = $enforcement->canCreateUser($tenant);
+        if ($check !== true) {
+            return back()->with('error', $check);
+        }
 
         $data = $request->validate([
             'name' => 'required|string|max:255',

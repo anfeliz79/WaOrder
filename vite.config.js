@@ -12,6 +12,7 @@ export default defineConfig({
             input: [
                 'resources/js/app.js',
                 'resources/js/menu-app.js',
+                'resources/js/landing.js',
             ],
             refresh: true,
         }),

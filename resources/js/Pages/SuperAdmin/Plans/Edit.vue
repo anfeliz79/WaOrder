@@ -1,0 +1,202 @@
+<script setup>
+import { Link, Head, useForm } from '@inertiajs/vue3'
+import SuperAdminLayout from '@/Layouts/SuperAdminLayout.vue'
+import { ArrowLeft } from 'lucide-vue-next'
+
+defineOptions({ layout: SuperAdminLayout })
+
+const props = defineProps({
+    plan: Object,
+})
+
+const form = useForm({
+    name: props.plan.name,
+    description: props.plan.description || '',
+    price_monthly: parseFloat(props.plan.price_monthly),
+    price_annual: props.plan.price_annual ? parseFloat(props.plan.price_annual) : null,
+    trial_days: props.plan.trial_days,
+    currency: props.plan.currency,
+    max_branches: props.plan.max_branches,
+    max_menu_items: props.plan.max_menu_items,
+    max_drivers: props.plan.max_drivers,
+    max_orders_per_month: props.plan.max_orders_per_month,
+    max_users: props.plan.max_users,
+    whatsapp_bot_enabled: props.plan.whatsapp_bot_enabled,
+    ai_enabled: props.plan.ai_enabled,
+    external_menu_enabled: props.plan.external_menu_enabled,
+    custom_domain: props.plan.custom_domain,
+    support_addon_available: props.plan.support_addon_available,
+    support_addon_price: parseFloat(props.plan.support_addon_price || 0),
+    delivery_app_addon_available: props.plan.delivery_app_addon_available,
+    delivery_app_addon_price: parseFloat(props.plan.delivery_app_addon_price || 0),
+    is_active: props.plan.is_active,
+    sort_order: props.plan.sort_order,
+})
+
+const submit = () => {
+    form.put(`/superadmin/plans/${props.plan.id}`)
+}
+</script>
+
+<template>
+    <Head :title="`Editar Plan: ${plan.name}`" />
+
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 py-6">
+        <!-- Header -->
+        <div class="flex items-center gap-3 mb-6">
+            <Link href="/superadmin/plans" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                <ArrowLeft class="w-5 h-5" />
+            </Link>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Editar: {{ plan.name }}</h1>
+                <p class="text-sm text-gray-500">
+                    {{ plan.subscriptions_count }} suscriptores activos
+                    <span class="mx-1">·</span>
+                    Slug: <code class="bg-gray-100 px-1 py-0.5 rounded text-xs">{{ plan.slug }}</code>
+                </p>
+            </div>
+        </div>
+
+        <form @submit.prevent="submit" class="space-y-6">
+            <!-- Basic Info -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Informacion Basica</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                        <input v-model="form.name" type="text" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
+                        <p v-if="form.errors.name" class="mt-1 text-sm text-red-600">{{ form.errors.name }}</p>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Descripcion</label>
+                        <textarea v-model="form.description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pricing -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Precios</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Precio Mensual</label>
+                        <input v-model.number="form.price_monthly" type="number" step="0.01" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Precio Anual</label>
+                        <input v-model.number="form.price_annual" type="number" step="0.01" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Dias de Prueba</label>
+                        <input v-model.number="form.trial_days" type="number" min="0" max="365" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Moneda</label>
+                        <select v-model="form.currency" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                            <option value="DOP">DOP</option>
+                            <option value="USD">USD</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Orden</label>
+                        <input v-model.number="form.sort_order" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Limits -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Limites</h2>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Sucursales</label>
+                        <input v-model.number="form.max_branches" type="number" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Items de Menu</label>
+                        <input v-model.number="form.max_menu_items" type="number" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Mensajeros</label>
+                        <input v-model.number="form.max_drivers" type="number" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ordenes/Mes</label>
+                        <input v-model.number="form.max_orders_per_month" type="number" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Usuarios</label>
+                        <input v-model.number="form.max_users" type="number" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Funcionalidades</h2>
+                <div class="space-y-3">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input v-model="form.whatsapp_bot_enabled" type="checkbox" class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500" />
+                        <span class="text-sm text-gray-700">Bot de WhatsApp</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input v-model="form.ai_enabled" type="checkbox" class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500" />
+                        <span class="text-sm text-gray-700">Inteligencia Artificial (NLP)</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input v-model="form.external_menu_enabled" type="checkbox" class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500" />
+                        <span class="text-sm text-gray-700">Menu Externo (API)</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input v-model="form.custom_domain" type="checkbox" class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500" />
+                        <span class="text-sm text-gray-700">Dominio Personalizado</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Add-ons -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Add-ons</h2>
+                <div class="space-y-4">
+                    <div class="flex items-start gap-4">
+                        <label class="flex items-center gap-3 cursor-pointer min-w-fit">
+                            <input v-model="form.support_addon_available" type="checkbox" class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500" />
+                            <span class="text-sm text-gray-700">Soporte Premium</span>
+                        </label>
+                        <div v-if="form.support_addon_available" class="flex-1">
+                            <input v-model.number="form.support_addon_price" type="number" step="0.01" min="0" placeholder="Precio mensual" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm" />
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <label class="flex items-center gap-3 cursor-pointer min-w-fit">
+                            <input v-model="form.delivery_app_addon_available" type="checkbox" class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500" />
+                            <span class="text-sm text-gray-700">App Movil Delivery</span>
+                        </label>
+                        <div v-if="form.delivery_app_addon_available" class="flex-1">
+                            <input v-model.number="form.delivery_app_addon_price" type="number" step="0.01" min="0" placeholder="Precio mensual" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input v-model="form.is_active" type="checkbox" class="w-4 h-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500" />
+                    <span class="text-sm font-medium text-gray-700">Plan activo</span>
+                </label>
+            </div>
+
+            <!-- Submit -->
+            <div class="flex items-center justify-end gap-3">
+                <Link href="/superadmin/plans" class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                    Cancelar
+                </Link>
+                <button type="submit" :disabled="form.processing"
+                    class="px-6 py-2.5 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors">
+                    {{ form.processing ? 'Guardando...' : 'Guardar Cambios' }}
+                </button>
+            </div>
+        </form>
+    </div>
+</template>
