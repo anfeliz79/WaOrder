@@ -11,7 +11,7 @@ class EnsureSetupComplete
     public function handle(Request $request, Closure $next): Response
     {
         // Skip for setup routes, logout, API routes, and superadmin routes
-        if ($request->is('setup*') || $request->is('logout') || $request->is('api/*') || $request->is('login') || $request->is('superadmin*') || $request->is('console*')) {
+        if ($request->is('setup*') || $request->is('register/payment*') || $request->is('logout') || $request->is('api/*') || $request->is('login') || $request->is('superadmin*') || $request->is('console*')) {
             return $next($request);
         }
 

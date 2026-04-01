@@ -17,6 +17,7 @@ use App\Http\Controllers\SuperAdmin\PlanController;
 use App\Http\Controllers\SuperAdmin\SettingsController as SuperAdminSettingsController;
 use App\Http\Controllers\SuperAdmin\TenantController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\RegistrationPaymentController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\OrderConsoleController;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +41,12 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('guest');
 Route::get('/register', [RegisterController::class, 'showForm'])->name('register')->middleware('guest');
 Route::post('/register', [RegisterController::class, 'register'])->middleware('guest');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth');
+
+// Registration payment step (auth required, no setup check)
+Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class])->group(function () {
+    Route::get('/register/payment', [RegistrationPaymentController::class, 'show']);
+    Route::post('/register/payment/tokenize', [RegistrationPaymentController::class, 'tokenize']);
+});
 
 // Branch selection (after login, before full admin access)
 Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class])->group(function () {

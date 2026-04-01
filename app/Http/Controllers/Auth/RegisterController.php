@@ -82,26 +82,25 @@ class RegisterController extends Controller
                 'tenant_id' => $tenant->id,
             ]);
 
-            // Create subscription — always active, no trials
+            // Create subscription
             $isFreePlan = $plan->isFree();
 
-            $subscriptionData = [
+            Subscription::create([
                 'tenant_id' => $tenant->id,
                 'plan_id' => $plan->id,
-                'status' => 'active',
+                'status' => $isFreePlan ? 'active' : 'pending_payment',
                 'billing_period' => 'monthly',
                 'price' => $plan->price_monthly,
                 'current_period_start' => now(),
                 'current_period_end' => $isFreePlan ? now()->addYear() : now()->addMonth(),
-            ];
+            ]);
 
-            Subscription::create($subscriptionData);
-
-            // Login and redirect to setup wizard
+            // Login
             Auth::login($user);
             $request->session()->regenerate();
 
-            return redirect('/setup');
+            // Free plan → setup wizard; paid plan → payment step
+            return $isFreePlan ? redirect('/setup') : redirect('/register/payment');
         });
     }
 }
