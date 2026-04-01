@@ -14,6 +14,7 @@ const props = defineProps({
     hasWhatsAppToken: Boolean,
     hasWhatsAppAppSecret: Boolean,
     hasAiKey: Boolean,
+    hasDeliveryAppAddon: Boolean,
 });
 
 const activeTab = ref('general');
@@ -220,17 +221,70 @@ const savePayment = () => {
     paymentForm.put('/settings', { preserveScroll: true });
 };
 
+const defaultSurveyQuestions = [
+    {
+        key: 'rating',
+        label: '¿Cómo calificarías tu experiencia de hoy?',
+        type: 'rating',
+        enabled: true,
+        options: [
+            { id: 'rate_5', title: '⭐⭐⭐⭐⭐ (5)' },
+            { id: 'rate_4', title: '⭐⭐⭐⭐ (4)' },
+            { id: 'rate_3', title: '⭐⭐⭐ (3 o menos)' },
+        ],
+    },
+    {
+        key: 'food_quality',
+        label: '¿Cómo estuvo la calidad de la comida?',
+        type: 'buttons',
+        enabled: true,
+        options: [
+            { id: 'food_excellent', title: 'Excelente' },
+            { id: 'food_good', title: 'Buena' },
+            { id: 'food_regular', title: 'Regular' },
+        ],
+    },
+    {
+        key: 'comment',
+        label: '¿Tienes algún comentario adicional?',
+        type: 'text',
+        enabled: true,
+        options: [],
+    },
+];
+
 const surveyForm = useForm({
     settings: {
         survey: {
             enabled: props.tenant?.settings?.survey?.enabled ?? true,
             thank_you_message: props.tenant?.settings?.survey?.thank_you_message || 'Muchas gracias por tu opinion! Nos ayuda a mejorar cada dia.',
+            questions: props.tenant?.settings?.survey?.questions
+                ? JSON.parse(JSON.stringify(props.tenant.settings.survey.questions))
+                : JSON.parse(JSON.stringify(defaultSurveyQuestions)),
         },
     },
 });
 
 const saveSurvey = () => {
     surveyForm.put('/settings', { preserveScroll: true });
+};
+
+const moveSurveyQuestion = (index, direction) => {
+    const questions = surveyForm.settings.survey.questions;
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= questions.length) return;
+    const [removed] = questions.splice(index, 1);
+    questions.splice(newIndex, 0, removed);
+};
+
+const addSurveyOption = (questionIndex) => {
+    const question = surveyForm.settings.survey.questions[questionIndex];
+    const newId = `${question.key}_opt_${question.options.length}`;
+    question.options.push({ id: newId, title: '' });
+};
+
+const removeSurveyOption = (questionIndex, optionIndex) => {
+    surveyForm.settings.survey.questions[questionIndex].options.splice(optionIndex, 1);
 };
 
 const driverForm = useForm({
@@ -1272,7 +1326,23 @@ const previewName = computed(() => props.tenant?.name || 'Mi Restaurante');
                             <p class="text-xs text-gray-500 mt-1">Los mensajeros reciben notificaciones por WhatsApp con botones interactivos para gestionar entregas.</p>
                         </div>
                     </label>
-                    <label class="flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors"
+                    <!-- App de Delivery — locked if addon not purchased -->
+                    <div v-if="!hasDeliveryAppAddon"
+                         class="flex items-start gap-3 p-4 rounded-lg border-2 border-gray-200 bg-gray-50 opacity-70 cursor-not-allowed">
+                        <input type="radio" disabled class="mt-1 text-gray-400 cursor-not-allowed" />
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-sm font-medium text-gray-500">App de Delivery</span>
+                                <span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-medium">Addon requerido</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Los mensajeros usan la app movil dedicada. Reciben push notifications y gestionan entregas desde la app.</p>
+                            <a href="/billing" class="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-primary-600 hover:text-primary-800 underline underline-offset-2">
+                                Actualizar plan para activar esta funcion
+                            </a>
+                        </div>
+                    </div>
+                    <label v-else
+                           class="flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors"
                            :class="driverForm.settings.driver_mode === 'app' ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:border-gray-300'">
                         <input v-model="driverForm.settings.driver_mode" type="radio" value="app" class="mt-1 text-primary-600" />
                         <div>
@@ -1304,27 +1374,79 @@ const previewName = computed(() => props.tenant?.name || 'Mi Restaurante');
         <div v-if="activeTab === 'survey'" class="bg-white rounded-xl shadow-sm border p-6 max-w-2xl">
             <h2 class="text-lg font-semibold mb-4">Encuesta Post-Entrega</h2>
             <p class="text-sm text-gray-500 mb-6">Se envia automaticamente al cliente despues de cada entrega</p>
-            <form @submit.prevent="saveSurvey" class="space-y-4">
+            <form @submit.prevent="saveSurvey" class="space-y-6">
                 <div class="flex items-center gap-3">
                     <input v-model="surveyForm.settings.survey.enabled" type="checkbox" id="survey_enabled"
                            class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
                     <label for="survey_enabled" class="text-sm font-medium text-gray-700">Encuesta habilitada</label>
                 </div>
 
-                <div v-if="surveyForm.settings.survey.enabled" class="space-y-4 pl-6 border-l-2 border-primary-200">
-                    <div class="bg-gray-50 rounded-lg p-4">
-                        <p class="text-sm font-medium text-gray-700 mb-2">Preguntas de la encuesta:</p>
-                        <ol class="text-sm text-gray-600 space-y-1 list-decimal pl-4">
-                            <li>Calificacion general (1-5 estrellas) - botones</li>
-                            <li>Calidad de la comida (Excelente/Buena/Regular) - botones</li>
-                            <li>Comentario adicional (texto libre u omitir) - boton</li>
-                        </ol>
+                <div v-if="surveyForm.settings.survey.enabled" class="space-y-5">
+                    <!-- Questions editor -->
+                    <div>
+                        <p class="text-sm font-semibold text-gray-700 mb-3">Preguntas</p>
+                        <div class="space-y-3">
+                            <div v-for="(question, qIdx) in surveyForm.settings.survey.questions" :key="question.key"
+                                 class="border rounded-lg p-4"
+                                 :class="question.enabled ? 'bg-white' : 'bg-gray-50 opacity-60'">
+                                <div class="flex items-start gap-3">
+                                    <!-- Enable toggle -->
+                                    <input v-model="question.enabled" type="checkbox"
+                                           class="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500 shrink-0" />
+                                    <div class="flex-1 min-w-0">
+                                        <!-- Type badge -->
+                                        <span class="inline-block text-xs font-medium px-2 py-0.5 rounded mb-2"
+                                              :class="{
+                                                  'bg-yellow-100 text-yellow-700': question.type === 'rating',
+                                                  'bg-blue-100 text-blue-700': question.type === 'buttons',
+                                                  'bg-gray-100 text-gray-600': question.type === 'text',
+                                              }">
+                                            {{ question.type === 'rating' ? '⭐ Calificación' : question.type === 'buttons' ? '🔘 Botones' : '✏️ Texto libre' }}
+                                        </span>
+                                        <!-- Label -->
+                                        <input v-model="question.label" type="text"
+                                               class="w-full px-3 py-1.5 border rounded-lg text-sm focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                                               placeholder="Texto de la pregunta..." />
+                                        <!-- Options for rating / buttons -->
+                                        <div v-if="question.type !== 'text'" class="mt-3">
+                                            <p class="text-xs text-gray-500 mb-2">Opciones (máx. 3 — límite de WhatsApp):</p>
+                                            <div class="space-y-2">
+                                                <div v-for="(opt, optIdx) in question.options" :key="optIdx"
+                                                     class="flex items-center gap-2">
+                                                    <input v-model="opt.title" type="text"
+                                                           class="flex-1 px-2 py-1 border rounded text-sm focus:ring-1 focus:ring-primary-500"
+                                                           placeholder="Texto del botón..." />
+                                                    <button v-if="question.type === 'buttons' && question.options.length > 1"
+                                                            type="button" @click="removeSurveyOption(qIdx, optIdx)"
+                                                            class="text-red-400 hover:text-red-600 text-sm leading-none px-1 shrink-0">✕</button>
+                                                </div>
+                                            </div>
+                                            <button v-if="question.type === 'buttons' && question.options.length < 3"
+                                                    type="button" @click="addSurveyOption(qIdx)"
+                                                    class="mt-2 text-xs text-primary-600 hover:text-primary-700 flex items-center gap-1">
+                                                + Agregar opción
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <!-- Reorder arrows -->
+                                    <div class="flex flex-col gap-1 shrink-0">
+                                        <button type="button" @click="moveSurveyQuestion(qIdx, -1)" :disabled="qIdx === 0"
+                                                class="text-gray-400 hover:text-gray-600 disabled:opacity-25 text-xs leading-none">▲</button>
+                                        <button type="button" @click="moveSurveyQuestion(qIdx, 1)"
+                                                :disabled="qIdx === surveyForm.settings.survey.questions.length - 1"
+                                                class="text-gray-400 hover:text-gray-600 disabled:opacity-25 text-xs leading-none">▼</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
+                    <!-- Thank you message -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Mensaje de agradecimiento</label>
                         <textarea v-model="surveyForm.settings.survey.thank_you_message" rows="2"
                                   class="w-full px-3 py-2 border rounded-lg text-sm" />
+                        <p class="text-xs text-gray-400 mt-1">Se envía al cliente al finalizar la encuesta.</p>
                     </div>
                 </div>
 

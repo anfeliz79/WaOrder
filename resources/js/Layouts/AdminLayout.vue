@@ -28,6 +28,7 @@ import {
     ChevronsUpDown,
     CreditCard,
     MonitorDot,
+    AlertTriangle,
 } from 'lucide-vue-next';
 import AppToast from '@/Components/AppToast.vue';
 import { useToast } from '@/Composables/useToast';
@@ -82,6 +83,8 @@ const switchBranch = (branchId) => {
 };
 
 const isActive = (href) => page.url.startsWith(href);
+
+const subscriptionAlert = computed(() => page.props.subscription_alert);
 
 const pageTitle = computed(() => {
     const match = navigation.value.find(n => isActive(n.href));
@@ -267,6 +270,27 @@ const pageTitle = computed(() => {
                 </div>
             </div>
             <div class="h-px bg-gradient-to-r from-primary-500/20 via-primary-500/10 to-transparent"></div>
+            </div>
+
+            <!-- Subscription alert banner -->
+            <div v-if="subscriptionAlert"
+                 class="flex items-center justify-between gap-4 px-4 sm:px-6 py-3 border-b text-sm"
+                 :class="subscriptionAlert.type === 'danger'
+                     ? 'bg-red-50 border-red-200'
+                     : 'bg-amber-50 border-amber-200'">
+                <div class="flex items-center gap-2 min-w-0">
+                    <AlertTriangle class="w-4 h-4 shrink-0"
+                                   :class="subscriptionAlert.type === 'danger' ? 'text-red-500' : 'text-amber-500'" />
+                    <span class="truncate"
+                          :class="subscriptionAlert.type === 'danger' ? 'text-red-700' : 'text-amber-700'">
+                        {{ subscriptionAlert.message }}
+                    </span>
+                </div>
+                <Link :href="subscriptionAlert.link"
+                      class="shrink-0 font-semibold underline underline-offset-2 whitespace-nowrap"
+                      :class="subscriptionAlert.type === 'danger' ? 'text-red-700 hover:text-red-900' : 'text-amber-700 hover:text-amber-900'">
+                    Ver planes
+                </Link>
             </div>
 
             <!-- Page content with transition -->

@@ -88,6 +88,121 @@ class Tenant extends Model
         return $this->hasOne(CardnetToken::class)->where('is_default', true)->where('is_active', true);
     }
 
+    public function getSurveyQuestions(): array
+    {
+        $questions = data_get($this->settings, 'survey.questions');
+
+        if (empty($questions)) {
+            return self::defaultSurveyQuestions();
+        }
+
+        return array_values(array_filter($questions, fn($q) => $q['enabled'] ?? true));
+    }
+
+    public static function defaultSurveyQuestions(): array
+    {
+        return [
+            [
+                'key' => 'rating',
+                'label' => '¿Cómo calificarías tu experiencia de hoy?',
+                'type' => 'rating',
+                'enabled' => true,
+                'options' => [
+                    ['id' => 'rate_5', 'title' => '⭐⭐⭐⭐⭐ (5)'],
+                    ['id' => 'rate_4', 'title' => '⭐⭐⭐⭐ (4)'],
+                    ['id' => 'rate_3', 'title' => '⭐⭐⭐ (3 o menos)'],
+                ],
+            ],
+            [
+                'key' => 'food_quality',
+                'label' => '¿Cómo estuvo la calidad de la comida?',
+                'type' => 'buttons',
+                'enabled' => true,
+                'options' => [
+                    ['id' => 'food_excellent', 'title' => 'Excelente'],
+                    ['id' => 'food_good', 'title' => 'Buena'],
+                    ['id' => 'food_regular', 'title' => 'Regular'],
+                ],
+            ],
+            [
+                'key' => 'comment',
+                'label' => '¿Tienes algún comentario adicional?',
+                'type' => 'text',
+                'enabled' => true,
+                'options' => [],
+            ],
+        ];
+    }
+
+    public function isBotEnabled(): bool
+    {
+        $subscription = $this->subscription;
+
+        if (!$subscription) {
+            return false;
+        }
+
+        if ($subscription->isActive()) {
+            return true;
+        }
+
+        // Past due but still inside grace period → keep bot running
+        if ($subscription->isInGracePeriod()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public function getSubscriptionAlert(): ?array
+    {
+        $subscription = $this->subscription;
+
+        if (!$subscription) {
+            return [
+                'type'    => 'danger',
+                'message' => 'No tienes un plan activo. Tu bot de WhatsApp está desactivado. Adquiere un plan para comenzar a recibir pedidos.',
+                'link'    => '/billing',
+            ];
+        }
+
+        if ($subscription->isActive()) {
+            if ($subscription->isTrialing()) {
+                $days = $subscription->trialDaysRemaining();
+                if ($days <= 3) {
+                    return [
+                        'type'    => 'warning',
+                        'message' => "Tu periodo de prueba vence en {$days} " . ($days === 1 ? 'día' : 'días') . '. Activa tu plan para no perder el servicio.',
+                        'link'    => '/billing',
+                    ];
+                }
+            }
+            return null;
+        }
+
+        if ($subscription->isInGracePeriod()) {
+            $days = max(0, (int) now()->diffInDays($subscription->grace_period_ends_at, false));
+            return [
+                'type'    => 'warning',
+                'message' => "Tu pago falló. Tienes {$days} " . ($days === 1 ? 'día' : 'días') . ' de gracia antes de que se desactive tu bot. Actualiza tu método de pago.',
+                'link'    => '/billing',
+            ];
+        }
+
+        $messages = [
+            'cancelled' => 'Tu suscripción fue cancelada. Tu bot de WhatsApp está desactivado. Reactiva tu plan para recibir pedidos.',
+            'suspended'  => 'Tu suscripción fue suspendida. Tu bot de WhatsApp está desactivado. Contacta soporte o reactiva tu plan.',
+            'expired'    => 'Tu suscripción venció. Tu bot de WhatsApp está desactivado. Renueva tu plan para continuar.',
+            'past_due'   => 'Tu pago está vencido y el periodo de gracia expiró. Tu bot de WhatsApp está desactivado. Actualiza tu método de pago.',
+        ];
+
+        return [
+            'type'    => 'danger',
+            'message' => $messages[$subscription->status] ?? 'Tu suscripción no está activa. Tu bot de WhatsApp está desactivado.',
+            'link'    => '/billing',
+        ];
+    }
+
     public function isAiEnabled(): bool
     {
         return (bool) $this->getSetting('ai.enabled', false);

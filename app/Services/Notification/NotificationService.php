@@ -164,7 +164,7 @@ class NotificationService
 
         if ($session) {
             $context = $session->context_data ?? [];
-            $context['survey_step'] = 'rating';
+            $context['survey_step'] = 0;
             $context['survey_id'] = $survey->id;
 
             $session->update([
@@ -180,22 +180,31 @@ class NotificationService
                 'conversation_state' => 'survey',
                 'status' => 'active',
                 'context_data' => [
-                    'survey_step' => 'rating',
+                    'survey_step' => 0,
                     'survey_id' => $survey->id,
                 ],
                 'expires_at' => now()->addHours(2),
             ]);
         }
 
-        // Send delivery message + survey rating buttons in a single message
-        $message = "¡Tu pedido *#{$order->order_number}* fue entregado! 🎉 ¡Gracias por elegirnos!\n\n"
-            . "Nos encantaría saber cómo te fue. ¿Cómo calificarías tu experiencia de hoy?";
+        // Build first question from tenant's survey settings
+        $questions = $tenant->getSurveyQuestions();
+        $firstQuestion = $questions[0] ?? null;
 
-        $buttons = [
-            ['id' => 'rate_5', 'title' => "\u{2B50}\u{2B50}\u{2B50}\u{2B50}\u{2B50} (5)"],
-            ['id' => 'rate_4', 'title' => "\u{2B50}\u{2B50}\u{2B50}\u{2B50} (4)"],
-            ['id' => 'rate_3', 'title' => "\u{2B50}\u{2B50}\u{2B50} (3 o menos)"],
-        ];
+        if (!$firstQuestion) {
+            // No questions — send plain delivery message
+            SendWhatsAppNotification::dispatch(
+                $order->tenant_id,
+                $order->customer_phone,
+                MessageFactory::orderStatusText($order->order_number, 'delivered'),
+            );
+            return;
+        }
+
+        $message = "¡Tu pedido *#{$order->order_number}* fue entregado! 🎉 ¡Gracias por elegirnos!\n\n"
+            . $firstQuestion['label'];
+
+        $buttons = array_slice($firstQuestion['options'] ?? [], 0, 3);
 
         SendWhatsAppNotification::dispatch(
             $order->tenant_id,

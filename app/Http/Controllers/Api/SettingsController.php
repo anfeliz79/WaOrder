@@ -19,6 +19,10 @@ class SettingsController extends Controller
             return response()->json($tenant);
         }
 
+        $subscription = $tenant->subscription;
+        $hasDeliveryAppAddon = $subscription
+            && $subscription->addons()->where('addon_type', 'delivery_app')->where('is_active', true)->exists();
+
         return Inertia::render('Settings/Index', [
             'tenant' => $tenant,
             'whatsappConfig' => [
@@ -29,6 +33,7 @@ class SettingsController extends Controller
             'hasAiKey' => (bool) $tenant->ai_api_key,
             'hasWhatsAppToken' => (bool) $tenant->whatsapp_access_token,
             'hasWhatsAppAppSecret' => (bool) $tenant->whatsapp_app_secret,
+            'hasDeliveryAppAddon' => $hasDeliveryAppAddon,
         ]);
     }
 
@@ -83,6 +88,14 @@ class SettingsController extends Controller
             'settings.survey' => 'nullable|array',
             'settings.survey.enabled' => 'nullable|boolean',
             'settings.survey.thank_you_message' => 'nullable|string|max:500',
+            'settings.survey.questions' => 'nullable|array|max:10',
+            'settings.survey.questions.*.key' => 'required|string|max:50',
+            'settings.survey.questions.*.label' => 'required|string|max:500',
+            'settings.survey.questions.*.type' => 'required|in:rating,buttons,text',
+            'settings.survey.questions.*.enabled' => 'required|boolean',
+            'settings.survey.questions.*.options' => 'nullable|array|max:3',
+            'settings.survey.questions.*.options.*.id' => 'required|string|max:100',
+            'settings.survey.questions.*.options.*.title' => 'required|string|max:100',
             // Notification settings
             'settings.notifications' => 'nullable|array',
             'settings.notifications.sound_enabled' => 'nullable|boolean',
@@ -115,9 +128,10 @@ class SettingsController extends Controller
         if (isset($data['settings'])) {
             $currentSettings = $tenant->settings ?? [];
 
-            // Custom methods and taxes must be replaced entirely (not merged) to allow deletion
+            // These must be replaced entirely (not merged) to allow deletion
             $customMethods = $data['settings']['payment']['custom_methods'] ?? null;
             $taxes = $data['settings']['taxes'] ?? null;
+            $surveyQuestions = $data['settings']['survey']['questions'] ?? null;
 
             $data['settings'] = array_replace_recursive($currentSettings, $data['settings']);
 
@@ -126,6 +140,9 @@ class SettingsController extends Controller
             }
             if ($taxes !== null) {
                 $data['settings']['taxes'] = array_values($taxes);
+            }
+            if ($surveyQuestions !== null) {
+                $data['settings']['survey']['questions'] = array_values($surveyQuestions);
             }
         }
 

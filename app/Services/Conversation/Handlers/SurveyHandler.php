@@ -4,142 +4,164 @@ namespace App\Services\Conversation\Handlers;
 
 use App\Models\ChatSession;
 use App\Models\SurveyResponse;
+use App\Models\Tenant;
 
 class SurveyHandler implements HandlerInterface
 {
     public function handle(ChatSession $session, string $message, string $messageType): array
     {
         $context = $session->context_data ?? [];
-        $surveyStep = $context['survey_step'] ?? 'rating';
         $surveyId = $context['survey_id'] ?? null;
-
         $messageLower = mb_strtolower(trim($message));
 
-        // Skip survey
+        // Normalize legacy string steps (rating/food_quality/comment) to numeric
+        $surveyStep = $context['survey_step'] ?? 0;
+        if (is_string($surveyStep)) {
+            $legacy = ['rating' => 0, 'food_quality' => 1, 'comment' => 2];
+            $surveyStep = $legacy[$surveyStep] ?? 0;
+        }
+
+        // Skip survey entirely
         if (in_array($messageLower, ['survey_skip', 'omitir', 'no gracias', 'skip'])) {
-            return $this->completeSurvey($surveyId, 'Gracias por tu compra! Esperamos verte pronto.');
+            return $this->completeSurvey($session, $surveyId);
         }
 
-        switch ($surveyStep) {
+        $questions = $this->getQuestions($session);
+
+        if (empty($questions) || $surveyStep >= count($questions)) {
+            return $this->completeSurvey($session, $surveyId);
+        }
+
+        $question = $questions[$surveyStep];
+        $answer = $this->processAnswer($question, $message, $messageLower);
+
+        if ($answer === null) {
+            return $this->buildQuestionResponse($question, $context);
+        }
+
+        $this->saveAnswer($surveyId, $question['key'], $answer);
+
+        $nextStep = $surveyStep + 1;
+
+        if ($nextStep >= count($questions)) {
+            return $this->completeSurvey($session, $surveyId);
+        }
+
+        $context['survey_step'] = $nextStep;
+        $nextQuestion = $questions[$nextStep];
+        $response = $this->buildQuestionResponse($nextQuestion, $context);
+
+        // Positive/negative feedback after a rating answer
+        if ($question['type'] === 'rating' && is_numeric($answer)) {
+            $prefix = (int) $answer >= 4
+                ? "¡Que bueno que te gustó! 😊\n\n"
+                : "Gracias por tu sinceridad, trabajaremos para mejorar.\n\n";
+            $response['response'] = $prefix . $response['response'];
+        }
+
+        return $response;
+    }
+
+    public function askFirstQuestion(ChatSession $session): array
+    {
+        $questions = $this->getQuestions($session);
+        if (empty($questions)) {
+            return ['response' => 'Gracias por tu compra!'];
+        }
+        return $this->buildQuestionResponse($questions[0], $session->context_data ?? []);
+    }
+
+    private function getQuestions(ChatSession $session): array
+    {
+        $tenant = Tenant::find($session->tenant_id);
+        return $tenant ? $tenant->getSurveyQuestions() : Tenant::defaultSurveyQuestions();
+    }
+
+    private function processAnswer(array $question, string $message, string $messageLower): mixed
+    {
+        switch ($question['type']) {
             case 'rating':
-                return $this->handleRating($session, $messageLower, $surveyId, $context);
-            case 'food_quality':
-                return $this->handleFoodQuality($session, $messageLower, $surveyId, $context);
-            case 'comment':
-                return $this->handleComment($session, $message, $surveyId);
-            default:
-                return $this->askRating();
+                if (preg_match('/^rate_(\d+)$/', $messageLower, $m)) {
+                    return (int) $m[1];
+                }
+                if (is_numeric($messageLower) && $messageLower >= 1 && $messageLower <= 5) {
+                    return (int) $messageLower;
+                }
+                return null;
+
+            case 'buttons':
+                $validIds = array_map('strtolower', array_column($question['options'] ?? [], 'id'));
+                if (in_array($messageLower, $validIds)) {
+                    return $messageLower;
+                }
+                // Match by title
+                foreach ($question['options'] ?? [] as $opt) {
+                    if ($messageLower === mb_strtolower($opt['title'])) {
+                        return strtolower($opt['id']);
+                    }
+                }
+                return null;
+
+            case 'text':
+                if (in_array($messageLower, ['omitir', 'no', 'nada', 'ninguno'])) {
+                    return '';
+                }
+                return $message;
+        }
+
+        return null;
+    }
+
+    private function saveAnswer(?int $surveyId, string $questionKey, mixed $answer): void
+    {
+        if (!$surveyId) {
+            return;
+        }
+
+        $data = match ($questionKey) {
+            'rating' => ['rating' => (int) $answer],
+            'food_quality' => ['food_quality' => preg_replace('/^food_/', '', (string) $answer)],
+            'comment' => ['comment' => $answer ?: null],
+            default => [],
+        };
+
+        if (!empty($data)) {
+            SurveyResponse::where('id', $surveyId)->update($data);
         }
     }
 
-    public function askRating(): array
+    private function buildQuestionResponse(array $question, array $context): array
     {
-        return [
-            'response' => "Nos encantaria saber tu opinion!\n\nDel 1 al 5, como calificarias tu experiencia?",
-            'response_type' => 'buttons',
-            'buttons' => [
-                ['id' => 'rate_5', 'title' => '⭐⭐⭐⭐⭐ (5)'],
-                ['id' => 'rate_4', 'title' => '⭐⭐⭐⭐ (4)'],
-                ['id' => 'rate_3', 'title' => '⭐⭐⭐ (3 o menos)'],
-            ],
-        ];
-    }
-
-    private function handleRating(ChatSession $session, string $message, ?int $surveyId, array $context): array
-    {
-        $rating = null;
-
-        if (in_array($message, ['rate_5', '5'])) $rating = 5;
-        elseif (in_array($message, ['rate_4', '4'])) $rating = 4;
-        elseif (in_array($message, ['rate_3', '3'])) $rating = 3;
-        elseif ($message === '2') $rating = 2;
-        elseif ($message === '1') $rating = 1;
-
-        if ($rating === null) {
-            return $this->askRating();
-        }
-
-        if ($surveyId) {
-            SurveyResponse::where('id', $surveyId)->update(['rating' => $rating]);
-        }
-
-        $context['survey_step'] = 'food_quality';
-
-        $responseText = $rating >= 4
-            ? "Que bueno que te gusto! 😊"
-            : "Gracias por tu sinceridad, trabajaremos para mejorar.";
-
-        return [
-            'response' => "{$responseText}\n\nComo estuvo la calidad de la comida?",
-            'response_type' => 'buttons',
-            'buttons' => [
-                ['id' => 'food_excellent', 'title' => 'Excelente'],
-                ['id' => 'food_good', 'title' => 'Buena'],
-                ['id' => 'food_regular', 'title' => 'Regular'],
-            ],
+        $result = [
+            'response' => $question['label'],
             'context_data' => $context,
         ];
-    }
 
-    private function handleFoodQuality(ChatSession $session, string $message, ?int $surveyId, array $context): array
-    {
-        $quality = null;
-
-        if (in_array($message, ['food_excellent', 'excelente'])) $quality = 'excellent';
-        elseif (in_array($message, ['food_good', 'buena', 'bien'])) $quality = 'good';
-        elseif (in_array($message, ['food_regular', 'regular', 'normal'])) $quality = 'regular';
-        elseif (in_array($message, ['food_bad', 'mala', 'mal'])) $quality = 'bad';
-
-        if ($quality === null) {
-            return [
-                'response' => "Selecciona una opcion:",
-                'response_type' => 'buttons',
-                'buttons' => [
-                    ['id' => 'food_excellent', 'title' => 'Excelente'],
-                    ['id' => 'food_good', 'title' => 'Buena'],
-                    ['id' => 'food_regular', 'title' => 'Regular'],
-                ],
-                'context_data' => $context,
-            ];
+        if ($question['type'] === 'text') {
+            $result['response_type'] = 'buttons';
+            $result['buttons'] = [['id' => 'survey_skip', 'title' => 'Omitir']];
+        } else {
+            $options = $question['options'] ?? [];
+            $result['response_type'] = 'buttons';
+            $result['buttons'] = array_slice($options, 0, 3); // WhatsApp max 3 buttons
         }
 
-        if ($surveyId) {
-            SurveyResponse::where('id', $surveyId)->update(['food_quality' => $quality]);
-        }
-
-        $context['survey_step'] = 'comment';
-
-        return [
-            'response' => "Tienes algun comentario adicional? Puedes escribirlo o presionar Omitir.",
-            'response_type' => 'buttons',
-            'buttons' => [
-                ['id' => 'survey_skip', 'title' => 'Omitir'],
-            ],
-            'context_data' => $context,
-        ];
+        return $result;
     }
 
-    private function handleComment(ChatSession $session, string $message, ?int $surveyId): array
-    {
-        $messageLower = mb_strtolower(trim($message));
-
-        if (!in_array($messageLower, ['survey_skip', 'omitir', 'no', 'nada'])) {
-            if ($surveyId) {
-                SurveyResponse::where('id', $surveyId)->update(['comment' => $message]);
-            }
-        }
-
-        return $this->completeSurvey($surveyId, "Muchas gracias por tu opinion! 🙏\n\nNos ayuda a mejorar cada dia. Esperamos verte pronto!");
-    }
-
-    private function completeSurvey(?int $surveyId, string $message): array
+    private function completeSurvey(ChatSession $session, ?int $surveyId): array
     {
         if ($surveyId) {
             SurveyResponse::where('id', $surveyId)->update(['completed' => true]);
         }
 
+        $tenant = Tenant::find($session->tenant_id);
+        $thankYouMsg = data_get($tenant?->settings, 'survey.thank_you_message',
+            "¡Muchas gracias por tu opinión! 🙏\n\nNos ayuda a mejorar cada día. ¡Esperamos verte pronto!"
+        );
+
         return [
-            'response' => $message,
+            'response' => $thankYouMsg,
             'next_state' => 'greeting',
             'active_order_id' => null,
             'destroy_session' => true,

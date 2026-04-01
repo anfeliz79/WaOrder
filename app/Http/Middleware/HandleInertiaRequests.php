@@ -9,6 +9,15 @@ class HandleInertiaRequests extends Middleware
 {
     protected $rootView = 'app';
 
+    private function resolveSubscriptionAlert($user, $tenant): ?array
+    {
+        if (!$user || $user->isSuperAdmin() || !$tenant) {
+            return null;
+        }
+
+        return $tenant->getSubscriptionAlert();
+    }
+
     public function share(Request $request): array
     {
         $user = $request->user();
@@ -72,6 +81,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
             ],
+            'subscription_alert' => $this->resolveSubscriptionAlert($user, $tenant),
             'notification_settings' => [
                 'sound_enabled' => $tenant?->getSetting('notifications.sound_enabled', false),
                 'polling_interval' => $tenant?->getSetting('notifications.polling_interval', 20),

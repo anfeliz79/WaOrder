@@ -56,6 +56,12 @@ class ProcessWhatsAppMessage implements ShouldQueue
         // Bind tenant to app container
         app()->instance('tenant', $tenant);
 
+        // Block bot if tenant has no active subscription
+        if (!$tenant->isBotEnabled()) {
+            Log::info('ProcessWhatsAppMessage: bot disabled (no active subscription)', ['tenant_id' => $this->tenantId]);
+            return;
+        }
+
         // Route driver button presses to DriverMessageHandler
         if (str_starts_with($this->content, 'drv_')) {
             $driver = Driver::where('phone', $this->from)
