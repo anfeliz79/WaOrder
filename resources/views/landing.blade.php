@@ -12,7 +12,7 @@
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800" rel="stylesheet" />
     @vite(['resources/js/landing.js'])
 </head>
-<body class="bg-white text-gray-900 font-[Inter]" x-data="{ mobileMenu: false, billing: 'monthly' }">
+<body class="bg-white text-gray-900 font-[Inter]" x-data="{ mobileMenu: false, billing: 'monthly' }" x-init="window.waWhatsApp = '{{ config('app.whatsapp_contact', '18091234567') }}'">
 
     {{-- Navigation --}}
     <nav class="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">
@@ -30,8 +30,12 @@
                 <a href="#faq" class="text-sm text-gray-600 hover:text-gray-900 transition-colors">FAQ</a>
             </div>
             <div class="hidden md:flex items-center gap-3">
+                <a href="https://wa.me/{{ config('app.whatsapp_contact', '18091234567') }}?text={{ urlencode('Hola, me interesa WaOrder. Quisiera mas informacion.') }}" target="_blank" class="text-sm font-medium text-green-600 hover:text-green-700 px-4 py-2 flex items-center gap-1.5">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.96 11.96 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.3 0-4.438-.663-6.24-1.804l-.436-.268-2.646.887.887-2.646-.268-.436A9.96 9.96 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
+                    Contacto
+                </a>
                 <a href="/login" class="text-sm font-medium text-gray-700 hover:text-gray-900 px-4 py-2">Iniciar Sesion</a>
-                <a href="/register" class="text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 rounded-lg transition-colors">Registrate Gratis</a>
+                <a href="/register" class="text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 rounded-lg transition-colors">Registrate</a>
             </div>
             <button @click="mobileMenu = !mobileMenu" class="md:hidden p-2 text-gray-600">
                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -47,8 +51,9 @@
             <a href="#pricing" class="block text-sm text-gray-600 py-2" @click="mobileMenu = false">Precios</a>
             <a href="#faq" class="block text-sm text-gray-600 py-2" @click="mobileMenu = false">FAQ</a>
             <hr class="border-gray-100">
+            <a href="https://wa.me/{{ config('app.whatsapp_contact', '18091234567') }}?text={{ urlencode('Hola, me interesa WaOrder.') }}" target="_blank" class="block text-sm font-medium text-green-600 py-2">Contactar por WhatsApp</a>
             <a href="/login" class="block text-sm font-medium text-gray-700 py-2">Iniciar Sesion</a>
-            <a href="/register" class="block text-sm font-medium text-center text-white bg-indigo-600 rounded-lg py-2.5">Registrate Gratis</a>
+            <a href="/register" class="block text-sm font-medium text-center text-white bg-indigo-600 rounded-lg py-2.5">Registrate</a>
         </div>
     </nav>
 
@@ -69,11 +74,13 @@
             </p>
             <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <a href="/register" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200">
-                    Empezar gratis
+                    Empezar ahora
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                 </a>
-                <a href="#how-it-works" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-gray-700 font-semibold rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all">
-                    Ver como funciona
+                <a href="https://wa.me/{{ config('app.whatsapp_contact', '18091234567') }}?text={{ urlencode('Hola, quiero saber mas sobre WaOrder para mi restaurante.') }}" target="_blank"
+                    class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-all shadow-lg shadow-green-200">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.96 11.96 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.3 0-4.438-.663-6.24-1.804l-.436-.268-2.646.887.887-2.646-.268-.436A9.96 9.96 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
+                    Solicitar asistencia
                 </a>
             </div>
         </div>
@@ -183,38 +190,38 @@
                             <span class="text-sm text-gray-500">DOP/mes</span>
                             @endif
                         </div>
-                        @if($plan->trial_days > 0)
-                        <p class="mt-2 text-sm text-indigo-600 font-medium">{{ $plan->trial_days }} dias gratis</p>
-                        @endif
 
                         <a href="/register?plan={{ $plan->slug }}"
                             class="mt-8 block w-full text-center py-3 rounded-xl text-sm font-semibold transition-all
                             {{ $isPopular
                                 ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200'
                                 : 'bg-gray-900 text-white hover:bg-gray-800' }}">
-                            {{ $plan->price_monthly > 0 ? ($plan->trial_days > 0 ? 'Probar gratis' : 'Empezar') : 'Empezar gratis' }}
+                            Empezar
                         </a>
 
+                        @php
+                            $check = '<svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                        @endphp
                         <ul class="mt-8 space-y-3">
                             <li class="flex items-center gap-3 text-sm text-gray-600">
-                                <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                {{ $plan->max_branches }} {{ $plan->max_branches === 1 ? 'sucursal' : 'sucursales' }}
+                                {!! $check !!}
+                                {{ $plan->max_branches ? ($plan->max_branches . ' ' . ($plan->max_branches === 1 ? 'sucursal' : 'sucursales')) : 'Sucursales ilimitadas' }}
                             </li>
                             <li class="flex items-center gap-3 text-sm text-gray-600">
-                                <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                Hasta {{ $plan->max_menu_items }} items de menu
+                                {!! $check !!}
+                                {{ $plan->max_menu_items ? ('Hasta ' . $plan->max_menu_items . ' items de menu') : 'Items de menu ilimitados' }}
                             </li>
                             <li class="flex items-center gap-3 text-sm text-gray-600">
-                                <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                {{ $plan->max_drivers }} {{ $plan->max_drivers === 1 ? 'mensajero' : 'mensajeros' }}
+                                {!! $check !!}
+                                {{ $plan->max_drivers ? ($plan->max_drivers . ' ' . ($plan->max_drivers === 1 ? 'mensajero' : 'mensajeros')) : 'Mensajeros ilimitados' }}
                             </li>
                             <li class="flex items-center gap-3 text-sm text-gray-600">
-                                <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                {{ number_format($plan->max_orders_per_month) }} ordenes/mes
+                                {!! $check !!}
+                                {{ $plan->max_orders_per_month ? (number_format($plan->max_orders_per_month) . ' ordenes/mes') : 'Ordenes ilimitadas' }}
                             </li>
                             <li class="flex items-center gap-3 text-sm text-gray-600">
-                                <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                {{ $plan->max_users }} {{ $plan->max_users === 1 ? 'usuario' : 'usuarios' }}
+                                {!! $check !!}
+                                {{ $plan->max_users ? ($plan->max_users . ' ' . ($plan->max_users === 1 ? 'usuario' : 'usuarios')) : 'Usuarios ilimitados' }}
                             </li>
                             @if($plan->whatsapp_bot_enabled)
                             <li class="flex items-center gap-3 text-sm text-gray-600">
@@ -264,11 +271,11 @@
                 @php
                 $faqs = [
                     ['q' => 'Necesito un numero de WhatsApp especial?', 'a' => 'Necesitas un numero con WhatsApp Business API. Si ya tienes un WhatsApp Business regular, podemos ayudarte a migrar. El proceso toma unos minutos.'],
-                    ['q' => 'Puedo probarlo antes de pagar?', 'a' => 'Si. Los planes pagos incluyen un periodo de prueba gratuito. No se realiza ningun cobro hasta que termine tu periodo de prueba.'],
                     ['q' => 'Que metodos de pago aceptan mis clientes?', 'a' => 'Tus clientes pueden pagar con efectivo, transferencia bancaria o tarjeta de credito/debito via Cardnet (integracion directa en el flujo de WhatsApp).'],
                     ['q' => 'Puedo tener varias sucursales?', 'a' => 'Si. Dependiendo de tu plan puedes configurar multiples sucursales, cada una con su propia zona de entrega, delivery fee y equipo.'],
                     ['q' => 'Como se cobra la suscripcion?', 'a' => 'La suscripcion se cobra mensual o anualmente con tarjeta de credito/debito via Cardnet. Puedes cambiar de plan o cancelar en cualquier momento.'],
                     ['q' => 'Que pasa si cancelo?', 'a' => 'Tu cuenta seguira activa hasta el final del periodo facturado. No se realizan cobros adicionales. Puedes reactivar en cualquier momento.'],
+                    ['q' => 'Como puedo contactarlos para mas informacion?', 'a' => 'Puedes escribirnos directamente por WhatsApp haciendo clic en el boton "Solicitar asistencia" o en "Contacto" en la barra de navegacion. Respondemos en minutos.'],
                 ];
                 @endphp
                 @foreach($faqs as $index => $faq)
@@ -293,11 +300,18 @@
     <section class="py-20 bg-indigo-600">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
             <h2 class="text-3xl sm:text-4xl font-bold text-white">Listo para automatizar tus pedidos?</h2>
-            <p class="mt-4 text-lg text-indigo-100">Empieza gratis y ve los resultados desde el primer dia.</p>
-            <a href="/register" class="mt-8 inline-flex items-center gap-2 px-8 py-3.5 bg-white text-indigo-600 font-semibold rounded-xl hover:bg-indigo-50 transition-all">
-                Crear mi cuenta gratis
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-            </a>
+            <p class="mt-4 text-lg text-indigo-100">Registrate y configura tu restaurante en minutos.</p>
+            <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a href="/register" class="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-indigo-600 font-semibold rounded-xl hover:bg-indigo-50 transition-all">
+                    Crear mi cuenta
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                </a>
+                <a href="https://wa.me/{{ config('app.whatsapp_contact', '18091234567') }}?text={{ urlencode('Hola, necesito asistencia con WaOrder.') }}" target="_blank"
+                    class="inline-flex items-center gap-2 px-8 py-3.5 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-all">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.96 11.96 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.3 0-4.438-.663-6.24-1.804l-.436-.268-2.646.887.887-2.646-.268-.436A9.96 9.96 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
+                    Solicitar asistencia
+                </a>
+            </div>
         </div>
     </section>
 
@@ -314,6 +328,7 @@
                 <div class="flex items-center gap-6 text-sm text-gray-400">
                     <a href="#features" class="hover:text-white transition-colors">Funciones</a>
                     <a href="#pricing" class="hover:text-white transition-colors">Precios</a>
+                    <a href="https://wa.me/{{ config('app.whatsapp_contact', '18091234567') }}" target="_blank" class="hover:text-green-400 transition-colors">WhatsApp</a>
                     <a href="/login" class="hover:text-white transition-colors">Login</a>
                 </div>
                 <p class="text-sm text-gray-500">&copy; {{ date('Y') }} WaOrder. Todos los derechos reservados.</p>

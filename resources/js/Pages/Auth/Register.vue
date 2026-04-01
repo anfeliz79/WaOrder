@@ -40,17 +40,16 @@ const submit = () => {
     form.post('/register')
 }
 
-const formatPrice = (price) => {
+const formatPrice = (price, currency) => {
     if (!price || parseFloat(price) === 0) return 'Gratis'
-    return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP', maximumFractionDigits: 0 }).format(price)
+    const cur = currency || 'DOP'
+    return new Intl.NumberFormat('es-DO', { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(price)
 }
 
-const trialEndDate = computed(() => {
-    if (!selectedPlanData.value?.trial_days) return null
-    const date = new Date()
-    date.setDate(date.getDate() + selectedPlanData.value.trial_days)
-    return date.toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' })
-})
+const formatLimit = (value, singular, plural) => {
+    if (!value) return plural + ' ilimitados'
+    return value + ' ' + (value === 1 ? singular : plural)
+}
 </script>
 
 <template>
@@ -166,23 +165,20 @@ const trialEndDate = computed(() => {
                                 <div>
                                     <div class="flex items-center gap-2">
                                         <span class="font-semibold text-gray-900">{{ plan.name }}</span>
-                                        <span v-if="plan.trial_days > 0" class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
-                                            {{ plan.trial_days }} dias gratis
-                                        </span>
                                     </div>
                                     <p class="text-sm text-gray-500 mt-1">{{ plan.description }}</p>
                                     <div class="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
-                                        <span>{{ plan.max_branches }} sucursales</span>
+                                        <span>{{ formatLimit(plan.max_branches, 'sucursal', 'sucursales') }}</span>
                                         <span class="text-gray-300">·</span>
-                                        <span>{{ plan.max_menu_items }} items</span>
+                                        <span>{{ formatLimit(plan.max_menu_items, 'item', 'items') }}</span>
                                         <span class="text-gray-300">·</span>
-                                        <span>{{ plan.max_drivers }} drivers</span>
+                                        <span>{{ formatLimit(plan.max_drivers, 'driver', 'drivers') }}</span>
                                         <span class="text-gray-300">·</span>
-                                        <span>{{ plan.max_orders_per_month }} ordenes/mes</span>
+                                        <span>{{ formatLimit(plan.max_orders_per_month, 'orden/mes', 'ordenes/mes') }}</span>
                                     </div>
                                 </div>
                                 <div class="text-right shrink-0 ml-4">
-                                    <span class="text-xl font-bold text-gray-900">{{ formatPrice(plan.price_monthly) }}</span>
+                                    <span class="text-xl font-bold text-gray-900">{{ formatPrice(plan.price_monthly, plan.currency) }}</span>
                                     <span v-if="parseFloat(plan.price_monthly) > 0" class="text-xs text-gray-500">/mes</span>
                                 </div>
                             </div>
@@ -235,22 +231,12 @@ const trialEndDate = computed(() => {
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-500">Precio</span>
-                                <span class="font-medium text-gray-900">{{ formatPrice(selectedPlanData?.price_monthly) }}/mes</span>
+                                <span class="font-medium text-gray-900">{{ formatPrice(selectedPlanData?.price_monthly, selectedPlanData?.currency) }}/mes</span>
                             </div>
                         </div>
 
-                        <!-- Trial notice -->
-                        <div v-if="selectedPlanData?.trial_days > 0" class="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
-                            <p class="text-sm text-indigo-800 font-medium">
-                                Prueba gratis por {{ selectedPlanData.trial_days }} dias
-                            </p>
-                            <p class="text-sm text-indigo-600 mt-1">
-                                No se realizara ningun cobro hasta el {{ trialEndDate }}.
-                            </p>
-                        </div>
-
                         <!-- Free plan notice -->
-                        <div v-else-if="selectedPlanData && parseFloat(selectedPlanData.price_monthly) === 0" class="bg-green-50 border border-green-100 rounded-xl p-4">
+                        <div v-if="selectedPlanData && parseFloat(selectedPlanData.price_monthly) === 0" class="bg-green-50 border border-green-100 rounded-xl p-4">
                             <p class="text-sm text-green-800 font-medium">
                                 Plan gratuito — sin cobros
                             </p>

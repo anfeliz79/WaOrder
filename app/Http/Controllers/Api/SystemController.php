@@ -13,7 +13,7 @@ class SystemController extends Controller
 {
     public function index()
     {
-        return Inertia::render('System/Index', [
+        return Inertia::render('SuperAdmin/System/Index', [
             'status' => $this->getStatus(),
         ]);
     }

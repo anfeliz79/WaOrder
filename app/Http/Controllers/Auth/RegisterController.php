@@ -82,31 +82,18 @@ class RegisterController extends Controller
                 'tenant_id' => $tenant->id,
             ]);
 
-            // Create subscription
+            // Create subscription — always active, no trials
             $isFreePlan = $plan->isFree();
-            $hasTrial = $plan->hasTrial();
 
             $subscriptionData = [
                 'tenant_id' => $tenant->id,
                 'plan_id' => $plan->id,
+                'status' => 'active',
                 'billing_period' => 'monthly',
                 'price' => $plan->price_monthly,
+                'current_period_start' => now(),
+                'current_period_end' => $isFreePlan ? now()->addYear() : now()->addMonth(),
             ];
-
-            if ($isFreePlan) {
-                $subscriptionData['status'] = 'active';
-                $subscriptionData['current_period_start'] = now();
-                $subscriptionData['current_period_end'] = now()->addYear();
-            } elseif ($hasTrial) {
-                $subscriptionData['status'] = 'trialing';
-                $subscriptionData['trial_ends_at'] = now()->addDays($plan->trial_days);
-                $subscriptionData['current_period_start'] = now();
-                $subscriptionData['current_period_end'] = now()->addDays($plan->trial_days);
-            } else {
-                $subscriptionData['status'] = 'active';
-                $subscriptionData['current_period_start'] = now();
-                $subscriptionData['current_period_end'] = now()->addMonth();
-            }
 
             Subscription::create($subscriptionData);
 

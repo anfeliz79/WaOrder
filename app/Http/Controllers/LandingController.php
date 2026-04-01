@@ -9,14 +9,6 @@ class LandingController extends Controller
 {
     public function index()
     {
-        if (auth()->check()) {
-            $user = auth()->user();
-            if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
-                return redirect('/superadmin');
-            }
-            return redirect('/dashboard');
-        }
-
         $plans = Plan::where('is_active', true)
             ->orderBy('sort_order')
             ->get();

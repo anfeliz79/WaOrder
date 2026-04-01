@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
 use App\Http\Controllers\SuperAdmin\PlanController;
+use App\Http\Controllers\SuperAdmin\SettingsController as SuperAdminSettingsController;
 use App\Http\Controllers\SuperAdmin\TenantController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\LandingController;
@@ -128,16 +129,6 @@ Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class, \App\Http
         Route::post('/settings/logo', [SettingsController::class, 'uploadLogo']);
         Route::delete('/settings/logo', [SettingsController::class, 'deleteLogo']);
 
-        // System management
-        Route::get('/system', [SystemController::class, 'index']);
-        Route::get('/system/status', [SystemController::class, 'status']);
-        Route::get('/system/logs', [SystemController::class, 'logs']);
-        Route::post('/system/migrate', [SystemController::class, 'migrate']);
-        Route::post('/system/cache/clear', [SystemController::class, 'clearCache']);
-        Route::post('/system/cache/rebuild', [SystemController::class, 'rebuildCache']);
-        Route::post('/system/queue/restart', [SystemController::class, 'restartWorkers']);
-        Route::post('/system/queue/flush', [SystemController::class, 'clearFailedJobs']);
-        Route::post('/system/storage/link', [SystemController::class, 'storageLink']);
     });
 });
 
@@ -161,4 +152,19 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
     Route::put('/plans/{id}', [PlanController::class, 'update'])->name('plans.update');
     Route::post('/plans/{id}/toggle-active', [PlanController::class, 'toggleActive'])->name('plans.toggle-active');
     Route::delete('/plans/{id}', [PlanController::class, 'destroy'])->name('plans.destroy');
+
+    // Settings
+    Route::get('/settings', [SuperAdminSettingsController::class, 'index'])->name('settings');
+    Route::post('/settings', [SuperAdminSettingsController::class, 'update'])->name('settings.update');
+
+    // System management
+    Route::get('/system', [SystemController::class, 'index'])->name('system');
+    Route::get('/system/status', [SystemController::class, 'status'])->name('system.status');
+    Route::get('/system/logs', [SystemController::class, 'logs'])->name('system.logs');
+    Route::post('/system/migrate', [SystemController::class, 'migrate'])->name('system.migrate');
+    Route::post('/system/cache/clear', [SystemController::class, 'clearCache'])->name('system.cache.clear');
+    Route::post('/system/cache/rebuild', [SystemController::class, 'rebuildCache'])->name('system.cache.rebuild');
+    Route::post('/system/queue/restart', [SystemController::class, 'restartWorkers'])->name('system.queue.restart');
+    Route::post('/system/queue/flush', [SystemController::class, 'clearFailedJobs'])->name('system.queue.flush');
+    Route::post('/system/storage/link', [SystemController::class, 'storageLink'])->name('system.storage.link');
 });

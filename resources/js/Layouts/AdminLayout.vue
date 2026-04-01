@@ -21,7 +21,6 @@ import {
     Star,
     Settings,
     Building2,
-    Server,
     Menu as MenuIcon,
     X,
     LogOut,
@@ -71,7 +70,6 @@ const allNavigation = [
     { name: 'Resenas', href: '/reviews', icon: Star, permission: 'reviews.view' },
     { name: 'Facturacion', href: '/billing', icon: CreditCard, permission: 'settings.manage' },
     { name: 'Configuracion', href: '/settings', icon: Settings, permission: 'settings.manage' },
-    { name: 'Sistema', href: '/system', icon: Server, permission: 'settings.manage' },
 ];
 
 const navigation = computed(() => allNavigation.filter(item => hasPermission(item.permission)));

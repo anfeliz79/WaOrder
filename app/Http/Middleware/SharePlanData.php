@@ -39,6 +39,7 @@ class SharePlanData
                     'ai' => (bool) $plan->ai_enabled,
                     'external_menu' => (bool) $plan->external_menu_enabled,
                     'custom_domain' => (bool) $plan->custom_domain,
+                    'delivery_app' => (bool) $plan->delivery_app_addon_available,
                 ],
                 'usage' => [
                     'branches' => $tenant->branches()->count(),

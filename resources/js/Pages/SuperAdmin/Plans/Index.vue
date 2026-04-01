@@ -68,11 +68,11 @@ const formatPrice = (price, currency = 'DOP') => {
                         </span>
                     </div>
                     <div class="flex items-baseline gap-1">
-                        <span class="text-3xl font-bold text-gray-900">{{ formatPrice(plan.price_monthly) }}</span>
+                        <span class="text-3xl font-bold text-gray-900">{{ formatPrice(plan.price_monthly, plan.currency) }}</span>
                         <span v-if="parseFloat(plan.price_monthly) > 0" class="text-sm text-gray-500">/mes</span>
                     </div>
                     <p v-if="plan.price_annual" class="text-sm text-gray-500 mt-1">
-                        {{ formatPrice(plan.price_annual) }}/anual
+                        {{ formatPrice(plan.price_annual, plan.currency) }}/anual
                     </p>
                     <p v-if="plan.trial_days > 0" class="text-sm text-amber-600 font-medium mt-2">
                         {{ plan.trial_days }} dias de prueba
@@ -85,23 +85,23 @@ const formatPrice = (price, currency = 'DOP') => {
                     <div class="grid grid-cols-2 gap-3 text-sm">
                         <div class="flex items-center gap-2">
                             <Store class="w-4 h-4 text-gray-400" />
-                            <span>{{ plan.max_branches }} sucursales</span>
+                            <span>{{ plan.max_branches || 'Ilimitadas' }} sucursales</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <UtensilsCrossed class="w-4 h-4 text-gray-400" />
-                            <span>{{ plan.max_menu_items }} items</span>
+                            <span>{{ plan.max_menu_items || 'Ilimitados' }} items</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <Truck class="w-4 h-4 text-gray-400" />
-                            <span>{{ plan.max_drivers }} drivers</span>
+                            <span>{{ plan.max_drivers || 'Ilimitados' }} drivers</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <ShoppingBag class="w-4 h-4 text-gray-400" />
-                            <span>{{ plan.max_orders_per_month }}/mes</span>
+                            <span>{{ plan.max_orders_per_month || 'Ilimitadas' }}/mes</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <Users class="w-4 h-4 text-gray-400" />
-                            <span>{{ plan.max_users }} usuarios</span>
+                            <span>{{ plan.max_users || 'Ilimitados' }} usuarios</span>
                         </div>
                     </div>
 
@@ -119,10 +119,10 @@ const formatPrice = (price, currency = 'DOP') => {
                         <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider pt-2">Add-ons</h4>
                         <div class="space-y-1 mt-1">
                             <p v-if="plan.support_addon_available" class="text-sm text-gray-600">
-                                Soporte: +{{ formatPrice(plan.support_addon_price) }}/mes
+                                Soporte: +{{ formatPrice(plan.support_addon_price, plan.currency) }}/mes
                             </p>
                             <p v-if="plan.delivery_app_addon_available" class="text-sm text-gray-600">
-                                App Delivery: +{{ formatPrice(plan.delivery_app_addon_price) }}/mes
+                                App Delivery: +{{ formatPrice(plan.delivery_app_addon_price, plan.currency) }}/mes
                             </p>
                         </div>
                     </div>

@@ -1,6 +1,6 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 import axios from 'axios';
 import AppSwitch from '@/Components/AppSwitch.vue';
@@ -333,20 +333,24 @@ const deleteSound = () => {
     });
 };
 
-const tabs = [
-    { id: 'general', label: 'General' },
-    { id: 'taxes', label: 'Impuestos' },
-    { id: 'hours', label: 'Horario' },
-    { id: 'whatsapp', label: 'WhatsApp' },
-    { id: 'menu', label: 'Menu' },
-    { id: 'marca', label: 'Marca' },
-    { id: 'payment', label: 'Pagos' },
-    { id: 'drivers', label: 'Mensajeros' },
-    { id: 'survey', label: 'Encuesta' },
-    { id: 'notifications', label: 'Notificaciones' },
-    { id: 'app_movil', label: 'App Móvil' },
-    { id: 'ai', label: 'IA / NLP' },
-];
+const planFeatures = computed(() => usePage().props.plan?.features || {});
+
+const tabs = computed(() => {
+    const allTabs = [
+        { id: 'general', label: 'General' },
+        { id: 'taxes', label: 'Impuestos' },
+        { id: 'hours', label: 'Horario' },
+        { id: 'whatsapp', label: 'WhatsApp' },
+        { id: 'menu', label: 'Menu' },
+        { id: 'marca', label: 'Marca' },
+        { id: 'payment', label: 'Pagos' },
+        { id: 'drivers', label: 'Mensajeros' },
+        { id: 'survey', label: 'Encuesta' },
+        { id: 'notifications', label: 'Notificaciones' },
+        { id: 'app_movil', label: 'App Movil', feature: 'delivery_app' },
+    ];
+    return allTabs.filter(t => !t.feature || planFeatures.value[t.feature]);
+});
 
 // ─── App Móvil / EAS Build ────────────────────────────────────────────────────
 
@@ -1854,131 +1858,6 @@ const previewName = computed(() => props.tenant?.name || 'Mi Restaurante');
             </div>
         </div>
 
-        <!-- ── IA / NLP Tab ──────────────────────────────────────────────────── -->
-        <div v-if="activeTab === 'ai'" class="bg-white rounded-xl shadow-sm border p-6 max-w-2xl">
-            <h2 class="text-lg font-semibold mb-1">Inteligencia Artificial (NLP)</h2>
-            <p class="text-sm text-gray-500 mb-6">
-                Cuando está activo, el chatbot usa IA para entender mensajes ambiguos o con errores ortográficos.
-                Si no hay clave configurada, el bot funciona con lógica de reglas normal.
-            </p>
-
-            <!-- Enabled toggle -->
-            <div class="flex items-center justify-between py-3 border-b border-gray-100 mb-5">
-                <div>
-                    <p class="text-sm font-medium text-gray-800">Activar NLP</p>
-                    <p class="text-xs text-gray-400 mt-0.5">Requiere una API key válida del proveedor seleccionado</p>
-                </div>
-                <AppSwitch v-model="aiForm.settings.ai.enabled" />
-            </div>
-
-            <form @submit.prevent="saveAi" class="space-y-5">
-                <!-- Provider -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Proveedor</label>
-                    <select v-model="aiForm.settings.ai.provider"
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                        <option value="groq">Groq (recomendado — gratis)</option>
-                        <option value="openai">OpenAI</option>
-                    </select>
-                    <p class="text-xs text-gray-400 mt-1">
-                        <span v-if="aiForm.settings.ai.provider === 'groq'">
-                            Obtén tu API key gratis en <span class="text-primary-600">console.groq.com</span>
-                        </span>
-                        <span v-else>
-                            Obtén tu API key en <span class="text-primary-600">platform.openai.com</span>
-                        </span>
-                    </p>
-                </div>
-
-                <!-- Model -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
-                    <select v-model="aiForm.settings.ai.model"
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                        <option value="">Usar modelo por defecto</option>
-                        <option v-for="m in (aiProviderModels[aiForm.settings.ai.provider] || [])" :key="m" :value="m">{{ m }}</option>
-                    </select>
-                </div>
-
-                <!-- API Key -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
-                    <div v-if="aiHasKey && !aiShowKey" class="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                        </svg>
-                        <span class="text-sm text-emerald-700 flex-1">API key configurada</span>
-                        <button type="button" @click="aiShowKey = true; aiForm.ai_api_key = ''"
-                                class="text-xs text-emerald-700 underline hover:no-underline">
-                            Cambiar
-                        </button>
-                        <button type="button" @click="aiForm.ai_api_key = ''; saveAi()"
-                                class="text-xs text-red-500 hover:text-red-700">
-                            Eliminar
-                        </button>
-                    </div>
-                    <div v-else class="relative">
-                        <input
-                            v-model="aiForm.ai_api_key"
-                            :type="aiShowKey ? 'text' : 'password'"
-                            placeholder="gsk_... o sk-..."
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm pr-10 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        />
-                        <button type="button" @click="aiShowKey = !aiShowKey"
-                                class="absolute right-2.5 top-2 text-gray-400 hover:text-gray-600">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path v-if="!aiShowKey" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Qué hace el NLP -->
-                <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800 space-y-1">
-                    <p class="font-medium">Con NLP activo el chatbot puede:</p>
-                    <ul class="list-disc list-inside space-y-0.5 text-blue-700 text-xs">
-                        <li>Entender nombres de productos con errores ortográficos o variantes ("peperoní" → "Pepperoni")</li>
-                        <li>Identificar categorías aunque el cliente escriba de forma diferente</li>
-                        <li>Procesar requests ambiguos que el bot normal no reconocería</li>
-                    </ul>
-                    <p class="text-xs text-blue-500 mt-2">Sin NLP el bot sigue funcionando normalmente con botones y lógica de reglas.</p>
-                </div>
-
-                <!-- Test + Save -->
-                <div class="flex items-center gap-3 pt-2">
-                    <button
-                        type="button"
-                        @click="testAi"
-                        :disabled="aiTesting || !aiHasKey"
-                        class="flex items-center gap-2 px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-40"
-                    >
-                        <svg v-if="aiTesting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                        </svg>
-                        {{ aiTesting ? 'Probando...' : 'Probar conexión' }}
-                    </button>
-
-                    <button
-                        type="submit"
-                        :disabled="aiForm.processing"
-                        class="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium transition-colors disabled:opacity-50"
-                    >
-                        {{ aiForm.processing ? 'Guardando...' : 'Guardar' }}
-                    </button>
-                </div>
-
-                <!-- Test result -->
-                <div v-if="aiTestResult" class="p-3 rounded-lg text-sm"
-                     :class="aiTestResult.success ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'">
-                    <p class="font-medium">{{ aiTestResult.success ? 'Conexión exitosa' : 'Error' }}</p>
-                    <p class="text-xs mt-0.5">{{ aiTestResult.message }}</p>
-                </div>
-
-                <p v-if="aiForm.errors.ai_api_key" class="text-xs text-red-600">{{ aiForm.errors.ai_api_key }}</p>
-            </form>
-        </div>
 
     </div>
 </template>

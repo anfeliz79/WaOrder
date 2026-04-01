@@ -9,9 +9,8 @@ use Illuminate\Support\Facades\Log;
 /**
  * Thin wrapper around OpenAI-compatible APIs (Groq, OpenAI).
  *
- * Resolution order for credentials:
- *   1. Tenant settings  (ai.provider / ai.model + ai_api_key column)
- *   2. Global .env      (AI_PROVIDER / GROQ_API_KEY / OPENAI_API_KEY)
+ * Uses global platform credentials configured by SuperAdmin.
+ * The plan feature flag `ai_enabled` controls which tenants have access.
  *
  * Returns null silently when no key is configured so callers can fall back
  * to the existing rule-based logic without any code changes.
@@ -26,27 +25,16 @@ class AiService
 
     public function __construct()
     {
-        $tenant = app('tenant');
+        // Use global platform AI credentials (managed by SuperAdmin)
+        $provider = config('ai.default_provider', 'groq');
+        $key      = config("ai.providers.{$provider}.api_key");
 
-        if ($tenant && $tenant->isAiEnabled() && $tenant->ai_api_key) {
-            // Tenant-level config takes precedence
-            $this->apiKey   = $tenant->ai_api_key;
-            $this->provider = $tenant->getAiProvider();
-            $this->model    = $tenant->getAiModel() ?: $this->defaultModel($this->provider);
-            $this->baseUrl  = $this->baseUrl($this->provider);
+        if ($key) {
+            $this->apiKey   = $key;
+            $this->provider = $provider;
+            $this->model    = config("ai.providers.{$provider}.model", $this->defaultModel($provider));
+            $this->baseUrl  = config("ai.providers.{$provider}.base_url", $this->baseUrl($provider));
             $this->available = true;
-        } else {
-            // Fall back to global .env
-            $provider = config('ai.default_provider', 'groq');
-            $key      = config("ai.providers.{$provider}.api_key");
-
-            if ($key) {
-                $this->apiKey   = $key;
-                $this->provider = $provider;
-                $this->model    = config("ai.providers.{$provider}.model", $this->defaultModel($provider));
-                $this->baseUrl  = config("ai.providers.{$provider}.base_url", $this->baseUrl($provider));
-                $this->available = true;
-            }
         }
     }
 
