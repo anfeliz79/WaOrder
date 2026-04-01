@@ -20,12 +20,12 @@ return new class extends Migration
             $table->unsignedInteger('trial_days')->default(0);
             $table->string('currency', 3)->default('DOP');
 
-            // Limits
-            $table->unsignedInteger('max_branches')->default(1);
-            $table->unsignedInteger('max_menu_items')->default(50);
-            $table->unsignedInteger('max_drivers')->default(3);
-            $table->unsignedInteger('max_orders_per_month')->default(100);
-            $table->unsignedInteger('max_users')->default(2);
+            // Limits (null = unlimited)
+            $table->unsignedInteger('max_branches')->nullable()->default(1);
+            $table->unsignedInteger('max_menu_items')->nullable()->default(50);
+            $table->unsignedInteger('max_drivers')->nullable()->default(3);
+            $table->unsignedInteger('max_orders_per_month')->nullable()->default(100);
+            $table->unsignedInteger('max_users')->nullable()->default(2);
 
             // Feature flags
             $table->boolean('whatsapp_bot_enabled')->default(true);

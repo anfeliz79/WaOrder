@@ -9,8 +9,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Change role enum to include superadmin
-        DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('superadmin', 'admin', 'gestor') DEFAULT 'gestor'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('superadmin', 'admin', 'gestor') DEFAULT 'gestor'");
+        }
 
         // Make tenant_id nullable (superadmin has no tenant)
         Schema::table('users', function (Blueprint $table) {
@@ -20,6 +21,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'gestor') DEFAULT 'gestor'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'gestor') DEFAULT 'gestor'");
+        }
     }
 };
