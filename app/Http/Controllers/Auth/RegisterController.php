@@ -47,7 +47,7 @@ class RegisterController extends Controller
 
         $plan = Plan::where('slug', $validated['plan_slug'])->firstOrFail();
 
-        return DB::transaction(function () use ($validated, $plan) {
+        return DB::transaction(function () use ($validated, $plan, $request) {
             // Generate unique slug
             $slug = Str::slug($validated['restaurant_name']);
             $baseSlug = $slug;
