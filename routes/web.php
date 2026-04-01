@@ -15,7 +15,9 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
 use App\Http\Controllers\SuperAdmin\PlanController;
 use App\Http\Controllers\SuperAdmin\SettingsController as SuperAdminSettingsController;
+use App\Http\Controllers\SuperAdmin\SubscriptionController;
 use App\Http\Controllers\SuperAdmin\TenantController;
+use App\Http\Controllers\SuperAdmin\ImpersonationController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\RegistrationPaymentController;
 use App\Http\Controllers\LandingController;
@@ -41,6 +43,7 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('guest');
 Route::get('/register', [RegisterController::class, 'showForm'])->name('register')->middleware('guest');
 Route::post('/register', [RegisterController::class, 'register'])->middleware('guest');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth');
+Route::post('/impersonation/leave', [ImpersonationController::class, 'leave'])->middleware('auth')->name('impersonation.leave');
 
 // Registration payment step (auth required, no setup check)
 Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class])->group(function () {
@@ -158,6 +161,13 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
     Route::put('/tenants/{id}', [TenantController::class, 'update'])->name('tenants.update');
     Route::post('/tenants/{id}/toggle-active', [TenantController::class, 'toggleActive'])->name('tenants.toggle-active');
     Route::delete('/tenants/{id}', [TenantController::class, 'destroy'])->name('tenants.destroy');
+    Route::post('/tenants/{id}/impersonate', [ImpersonationController::class, 'impersonate'])->name('tenants.impersonate');
+
+    // Subscriptions
+    Route::get('/subscriptions', [SubscriptionController::class, 'index'])->name('subscriptions.index');
+    Route::post('/subscriptions/{subscription}/extend', [SubscriptionController::class, 'extend'])->name('subscriptions.extend');
+    Route::post('/subscriptions/{subscription}/cancel', [SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
+    Route::post('/subscriptions/{subscription}/reactivate', [SubscriptionController::class, 'reactivate'])->name('subscriptions.reactivate');
 
     // Plans
     Route::get('/plans', [PlanController::class, 'index'])->name('plans.index');

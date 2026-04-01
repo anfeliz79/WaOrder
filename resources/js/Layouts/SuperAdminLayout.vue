@@ -3,7 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { Link, Head, router, usePage } from '@inertiajs/vue3'
 import {
     LayoutDashboard, Store, LogOut, Menu, X,
-    ChevronRight, Shield, CreditCard, Settings, Server
+    ChevronRight, Shield, CreditCard, Settings, Server, Receipt
 } from 'lucide-vue-next'
 
 defineProps({
@@ -13,6 +13,7 @@ defineProps({
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
 const flash = computed(() => page.props.flash)
+const alertCount = computed(() => page.props.alert_count ?? 0)
 const sidebarOpen = ref(false)
 const showFlash = ref(false)
 
@@ -21,6 +22,7 @@ const navItems = [
     { name: 'Dashboard', href: '/superadmin', icon: LayoutDashboard },
     { name: 'Restaurantes', href: '/superadmin/tenants', icon: Store },
     { name: 'Planes', href: '/superadmin/plans', icon: CreditCard },
+    { name: 'Suscripciones', href: '/superadmin/subscriptions', icon: Receipt },
     { name: 'Sistema', href: '/superadmin/system', icon: Server },
     { name: 'Configuracion', href: '/superadmin/settings', icon: Settings },
 ]
@@ -85,6 +87,10 @@ watch(flash, (val) => {
                 >
                     <component :is="item.icon" class="w-5 h-5 shrink-0" />
                     {{ item.name }}
+                    <span
+                        v-if="item.href === '/superadmin' && alertCount > 0"
+                        class="ml-auto bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none"
+                    >{{ alertCount }}</span>
                 </Link>
             </nav>
 

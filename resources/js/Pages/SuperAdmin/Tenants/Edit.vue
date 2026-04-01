@@ -4,7 +4,7 @@ import { Link, Head, useForm, router } from '@inertiajs/vue3'
 import SuperAdminLayout from '@/Layouts/SuperAdminLayout.vue'
 import {
     Save, ArrowLeft, Trash2, Users, MapPin,
-    ShoppingBag, DollarSign, Calendar,
+    ShoppingBag, DollarSign, Calendar, LogIn,
 } from 'lucide-vue-next'
 
 defineOptions({ layout: SuperAdminLayout })
@@ -45,6 +45,10 @@ const deleteTenant = () => {
     if (window.confirm(`¿Estás seguro de eliminar "${props.tenant.name}"? Se eliminarán todos los datos asociados. Esta acción no se puede deshacer.`)) {
         router.delete(`/superadmin/tenants/${props.tenant.id}`)
     }
+}
+
+const impersonateTenant = () => {
+    router.post(`/superadmin/tenants/${props.tenant.id}/impersonate`)
 }
 
 const timezones = [
@@ -121,6 +125,15 @@ const formatDate = (date) => {
             >
                 {{ tenant.subscription_plan }}
             </span>
+            <button
+                v-if="tenant.is_active"
+                @click="impersonateTenant"
+                class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors"
+                title="Entrar como admin de este restaurante"
+            >
+                <LogIn class="w-4 h-4" />
+                Entrar como
+            </button>
         </div>
 
         <!-- Tabs -->

@@ -29,6 +29,7 @@ import {
     CreditCard,
     MonitorDot,
     AlertTriangle,
+    Shield,
 } from 'lucide-vue-next';
 import AppToast from '@/Components/AppToast.vue';
 import { useToast } from '@/Composables/useToast';
@@ -85,6 +86,12 @@ const switchBranch = (branchId) => {
 const isActive = (href) => page.url.startsWith(href);
 
 const subscriptionAlert = computed(() => page.props.subscription_alert);
+const impersonating = computed(() => page.props.auth?.impersonating === true);
+const impersonatingTenantName = computed(() => page.props.auth?.tenant_name || '');
+
+const leaveImpersonation = () => {
+    router.post('/impersonation/leave');
+};
 
 const pageTitle = computed(() => {
     const match = navigation.value.find(n => isActive(n.href));
@@ -270,6 +277,21 @@ const pageTitle = computed(() => {
                 </div>
             </div>
             <div class="h-px bg-gradient-to-r from-primary-500/20 via-primary-500/10 to-transparent"></div>
+            </div>
+
+            <!-- Impersonation banner -->
+            <div v-if="impersonating"
+                 class="flex items-center justify-between gap-4 px-4 sm:px-6 py-2 bg-amber-400 text-amber-900 text-sm font-medium">
+                <div class="flex items-center gap-2">
+                    <Shield class="w-4 h-4 shrink-0" />
+                    <span>Modo soporte — estás viendo el panel de <strong>{{ impersonatingTenantName }}</strong></span>
+                </div>
+                <button
+                    @click="leaveImpersonation"
+                    class="shrink-0 px-3 py-1 bg-amber-900 text-amber-100 text-xs font-semibold rounded-lg hover:bg-amber-950 transition-colors"
+                >
+                    Salir
+                </button>
             </div>
 
             <!-- Subscription alert banner -->

@@ -2,12 +2,23 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Subscription;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
     protected $rootView = 'app';
+
+    private function getCriticalAlertCount(): int
+    {
+        return Cache::remember('superadmin_critical_alert_count', 60, function () {
+            return Subscription::withoutGlobalScope('tenant')
+                ->where('status', 'past_due')
+                ->count();
+        });
+    }
 
     private function resolveSubscriptionAlert($user, $tenant): ?array
     {
@@ -76,12 +87,17 @@ class HandleInertiaRequests extends Middleware
                 'branches' => $branches,
                 'current_branch' => $currentBranch,
                 'permissions' => $permissions,
+                'impersonating' => $request->session()->has('impersonating_id'),
+                'tenant_name' => $request->session()->has('impersonating_id')
+                    ? ($tenant?->name ?? null)
+                    : null,
             ],
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
             ],
             'subscription_alert' => $this->resolveSubscriptionAlert($user, $tenant),
+            'alert_count' => fn () => $this->getCriticalAlertCount(),
             'notification_settings' => [
                 'sound_enabled' => $tenant?->getSetting('notifications.sound_enabled', false),
                 'polling_interval' => $tenant?->getSetting('notifications.polling_interval', 20),

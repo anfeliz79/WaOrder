@@ -4,7 +4,7 @@ import { Link, Head, router } from '@inertiajs/vue3'
 import SuperAdminLayout from '@/Layouts/SuperAdminLayout.vue'
 import {
     Search, Plus, Pencil, Trash2, Store,
-    ToggleLeft, ToggleRight,
+    ToggleLeft, ToggleRight, LogIn,
 } from 'lucide-vue-next'
 
 defineOptions({ layout: SuperAdminLayout })
@@ -38,6 +38,10 @@ const deleteTenant = (tenant) => {
     if (window.confirm(`¿Estás seguro de eliminar el restaurante "${tenant.name}"? Esta acción no se puede deshacer.`)) {
         router.delete(`/superadmin/tenants/${tenant.id}`, { preserveScroll: true })
     }
+}
+
+const impersonateTenant = (tenant) => {
+    router.post(`/superadmin/tenants/${tenant.id}/impersonate`)
 }
 
 const planBadgeClass = (plan) => {
@@ -149,6 +153,14 @@ const planLabel = (plan) => {
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
+                                    <button
+                                        v-if="tenant.is_active"
+                                        @click="impersonateTenant(tenant)"
+                                        class="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                        title="Entrar como admin"
+                                    >
+                                        <LogIn class="w-4 h-4" />
+                                    </button>
                                     <Link
                                         :href="`/superadmin/tenants/${tenant.id}/edit`"
                                         class="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
