@@ -187,7 +187,7 @@
                                 {{ $plan->price_monthly > 0 ? number_format($plan->price_monthly, 0) : 'Gratis' }}
                             </span>
                             @if($plan->price_monthly > 0)
-                            <span class="text-sm text-gray-500">DOP/mes</span>
+                            <span class="text-sm text-gray-500">{{ $plan->currency ?? 'USD' }}/mes</span>
                             @endif
                         </div>
 
@@ -247,10 +247,10 @@
                         <div class="mt-6 pt-6 border-t border-gray-100">
                             <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Add-ons disponibles</p>
                             @if($plan->support_addon_available)
-                            <p class="text-sm text-gray-500">Soporte premium +{{ number_format($plan->support_addon_price, 0) }} DOP/mes</p>
+                            <p class="text-sm text-gray-500">Soporte premium +{{ number_format($plan->support_addon_price, 0) }} {{ $plan->currency ?? 'USD' }}/mes</p>
                             @endif
                             @if($plan->delivery_app_addon_available)
-                            <p class="text-sm text-gray-500">App Delivery +{{ number_format($plan->delivery_app_addon_price, 0) }} DOP/mes</p>
+                            <p class="text-sm text-gray-500">App Delivery +{{ number_format($plan->delivery_app_addon_price, 0) }} {{ $plan->currency ?? 'USD' }}/mes</p>
                             @endif
                         </div>
                         @endif
