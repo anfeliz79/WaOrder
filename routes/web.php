@@ -12,13 +12,16 @@ use App\Http\Controllers\Api\SetupController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\SuperAdmin\BankAccountController;
 use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
 use App\Http\Controllers\SuperAdmin\PlanController;
 use App\Http\Controllers\SuperAdmin\SettingsController as SuperAdminSettingsController;
 use App\Http\Controllers\SuperAdmin\SubscriptionController;
 use App\Http\Controllers\SuperAdmin\TenantController;
+use App\Http\Controllers\SuperAdmin\TransferVerificationController;
 use App\Http\Controllers\SuperAdmin\ImpersonationController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\RegistrationBankTransferController;
 use App\Http\Controllers\Auth\RegistrationPaymentController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\OrderConsoleController;
@@ -49,6 +52,10 @@ Route::post('/impersonation/leave', [ImpersonationController::class, 'leave'])->
 Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class])->group(function () {
     Route::get('/register/payment', [RegistrationPaymentController::class, 'show']);
     Route::post('/register/payment/tokenize', [RegistrationPaymentController::class, 'tokenize']);
+
+    // Bank transfer payment path
+    Route::post('/register/bank-transfer', [RegistrationBankTransferController::class, 'submit']);
+    Route::get('/register/bank-transfer/pending', [RegistrationBankTransferController::class, 'pending']);
 });
 
 // Branch selection (after login, before full admin access)
@@ -177,6 +184,18 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
     Route::put('/plans/{id}', [PlanController::class, 'update'])->name('plans.update');
     Route::post('/plans/{id}/toggle-active', [PlanController::class, 'toggleActive'])->name('plans.toggle-active');
     Route::delete('/plans/{id}', [PlanController::class, 'destroy'])->name('plans.destroy');
+
+    // Bank accounts (for bank transfer payments)
+    Route::get('/bank-accounts', [BankAccountController::class, 'index'])->name('bank-accounts.index');
+    Route::post('/bank-accounts', [BankAccountController::class, 'store'])->name('bank-accounts.store');
+    Route::put('/bank-accounts/{bankAccount}', [BankAccountController::class, 'update'])->name('bank-accounts.update');
+    Route::delete('/bank-accounts/{bankAccount}', [BankAccountController::class, 'destroy'])->name('bank-accounts.destroy');
+
+    // Transfer verifications
+    Route::get('/transfer-verifications', [TransferVerificationController::class, 'index'])->name('transfer-verifications.index');
+    Route::get('/transfer-verifications/{transferVerification}', [TransferVerificationController::class, 'show'])->name('transfer-verifications.show');
+    Route::post('/transfer-verifications/{transferVerification}/approve', [TransferVerificationController::class, 'approve'])->name('transfer-verifications.approve');
+    Route::post('/transfer-verifications/{transferVerification}/reject', [TransferVerificationController::class, 'reject'])->name('transfer-verifications.reject');
 
     // Settings
     Route::get('/settings', [SuperAdminSettingsController::class, 'index'])->name('settings');

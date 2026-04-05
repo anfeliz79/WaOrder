@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Subscription;
+use App\Models\TransferVerification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
@@ -16,6 +17,15 @@ class HandleInertiaRequests extends Middleware
         return Cache::remember('superadmin_critical_alert_count', 60, function () {
             return Subscription::withoutGlobalScope('tenant')
                 ->where('status', 'past_due')
+                ->count();
+        });
+    }
+
+    private function getPendingTransfersCount(): int
+    {
+        return Cache::remember('superadmin_pending_transfers_count', 120, function () {
+            return TransferVerification::withoutGlobalScope('tenant')
+                ->where('status', 'pending')
                 ->count();
         });
     }
@@ -97,7 +107,8 @@ class HandleInertiaRequests extends Middleware
                 'error' => $request->session()->get('error'),
             ],
             'subscription_alert' => $this->resolveSubscriptionAlert($user, $tenant),
-            'alert_count' => fn () => $this->getCriticalAlertCount(),
+            'alert_count'              => fn () => $this->getCriticalAlertCount(),
+            'pending_transfers_count'  => fn () => ($user?->isSuperAdmin()) ? $this->getPendingTransfersCount() : 0,
             'notification_settings' => [
                 'sound_enabled' => $tenant?->getSetting('notifications.sound_enabled', false),
                 'polling_interval' => $tenant?->getSetting('notifications.polling_interval', 20),

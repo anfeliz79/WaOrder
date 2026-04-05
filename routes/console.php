@@ -15,3 +15,6 @@ Schedule::job(new \App\Jobs\SuspendExpiredSubscriptions)->daily()->at('06:30');
 
 // Check pending Cardnet payment sessions
 Schedule::job(new \App\Jobs\CheckCardnetPaymentStatus)->everyFiveMinutes();
+
+// Expire bank transfer verifications past their 12-hour deadline
+Schedule::job(new \App\Jobs\ProcessExpiredTransferVerifications)->hourly();

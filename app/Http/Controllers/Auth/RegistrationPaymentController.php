@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\BankAccount;
 use App\Models\CardnetToken;
 use App\Services\Payment\CardnetTokenizationService;
 use App\Services\Subscription\SubscriptionManager;
@@ -49,10 +50,15 @@ class RegistrationPaymentController extends Controller
             ? 'https://servicios.cardnet.com.do/servicios/tokens/v1'
             : 'https://labservicios.cardnet.com.do/servicios/tokens/v1';
 
+        $bankAccounts = BankAccount::where('is_active', true)
+            ->orderBy('created_at')
+            ->get(['id', 'bank_name', 'account_holder_name', 'account_number', 'account_type', 'currency', 'instructions']);
+
         return Inertia::render('Auth/RegisterPayment', [
-            'plan' => $subscription->load('plan')->plan,
-            'publicKey' => config('cardnet.platform.public_key'),
+            'plan'               => $subscription->load('plan')->plan,
+            'publicKey'          => config('cardnet.platform.public_key'),
             'checkoutScriptBase' => $checkoutScriptBase,
+            'bankAccounts'       => $bankAccounts,
         ]);
     }
 
