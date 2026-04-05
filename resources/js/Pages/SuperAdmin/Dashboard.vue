@@ -43,11 +43,11 @@ const statCards = computed(() => [
         label: 'Total Restaurantes',
         value: props.stats.total_tenants,
         icon: Store,
-        color: 'amber',
-        bgClass: 'bg-amber-50',
-        iconBgClass: 'bg-amber-100',
-        iconClass: 'text-amber-600',
-        valueClass: 'text-amber-700',
+        color: 'blue',
+        bgClass: 'bg-blue-50',
+        iconBgClass: 'bg-blue-100',
+        iconClass: 'text-[#0052FF]',
+        valueClass: 'text-[#0047DB]',
     },
     {
         label: 'Restaurantes Activos',
@@ -63,11 +63,11 @@ const statCards = computed(() => [
         label: 'Total Usuarios',
         value: props.stats.total_users,
         icon: Users,
-        color: 'indigo',
-        bgClass: 'bg-indigo-50',
-        iconBgClass: 'bg-indigo-100',
-        iconClass: 'text-indigo-600',
-        valueClass: 'text-indigo-700',
+        color: 'blue',
+        bgClass: 'bg-blue-50',
+        iconBgClass: 'bg-blue-100',
+        iconClass: 'text-[#0052FF]',
+        valueClass: 'text-[#0047DB]',
     },
     {
         label: 'Total Pedidos',
@@ -215,7 +215,7 @@ const getPlanStyle = (slug) => planColorMap[slug] ?? { badge: 'bg-gray-100 text-
                 <h2 class="text-lg font-semibold text-gray-800">Restaurantes Recientes</h2>
                 <Link
                     href="/superadmin/tenants"
-                    class="text-sm text-amber-600 hover:text-amber-700 font-medium flex items-center gap-1"
+                    class="text-sm text-[#0052FF] hover:text-[#0047DB] font-medium flex items-center gap-1"
                 >
                     Ver todos
                     <ArrowUpRight class="w-4 h-4" />
@@ -262,7 +262,7 @@ const getPlanStyle = (slug) => planColorMap[slug] ?? { badge: 'bg-gray-100 text-
                             <td class="px-6 py-3">
                                 <Link
                                     :href="`/superadmin/tenants/${tenant.id}/edit`"
-                                    class="text-amber-600 hover:text-amber-700 font-medium inline-flex items-center gap-1"
+                                    class="text-[#0052FF] hover:text-[#0047DB] font-medium inline-flex items-center gap-1"
                                 >
                                     Editar
                                     <ExternalLink class="w-3.5 h-3.5" />
@@ -339,7 +339,7 @@ const getPlanStyle = (slug) => planColorMap[slug] ?? { badge: 'bg-gray-100 text-
                             <div class="w-full flex items-end" style="height: 80px">
                                 <div
                                     :style="{ height: barHeight(item.count, tenantsMax) + '%' }"
-                                    class="w-full bg-amber-500 rounded-t transition-all duration-300 min-h-px"
+                                    class="w-full bg-[#00D1FF] rounded-t transition-all duration-300 min-h-px"
                                 ></div>
                             </div>
                             <span class="text-xs text-gray-400">{{ item.month }}</span>

@@ -68,7 +68,7 @@ const planLabel = (plan) => {
             <h1 class="text-2xl font-bold text-gray-900">Restaurantes</h1>
             <Link
                 href="/superadmin/tenants/create"
-                class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-[#0052FF] text-white text-sm font-medium rounded-lg hover:bg-[#0047DB] transition-colors"
             >
                 <Plus class="w-4 h-4" />
                 Nuevo Restaurante
@@ -83,13 +83,13 @@ const planLabel = (plan) => {
                     v-model="search"
                     type="text"
                     placeholder="Buscar por nombre o slug..."
-                    class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                    class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                 />
             </div>
             <select
                 :value="status"
                 @change="changeStatus($event.target.value)"
-                class="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                class="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
             >
                 <option value="">Todos</option>
                 <option value="active">Activos</option>
@@ -116,8 +116,8 @@ const planLabel = (plan) => {
                         <tr v-for="tenant in tenants.data" :key="tenant.id" class="hover:bg-gray-50/50 transition-colors">
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center shrink-0">
-                                        <Store class="w-4 h-4 text-amber-600" />
+                                    <div class="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
+                                        <Store class="w-4 h-4 text-[#0052FF]" />
                                     </div>
                                     <div>
                                         <p class="text-sm font-medium text-gray-900">{{ tenant.name }}</p>
@@ -156,14 +156,14 @@ const planLabel = (plan) => {
                                     <button
                                         v-if="tenant.is_active"
                                         @click="impersonateTenant(tenant)"
-                                        class="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                        class="p-1.5 rounded-lg text-gray-400 hover:text-[#0052FF] hover:bg-blue-50 transition-colors"
                                         title="Entrar como admin"
                                     >
                                         <LogIn class="w-4 h-4" />
                                     </button>
                                     <Link
                                         :href="`/superadmin/tenants/${tenant.id}/edit`"
-                                        class="p-1.5 rounded-lg text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                                        class="p-1.5 rounded-lg text-gray-400 hover:text-[#0052FF] hover:bg-blue-50 transition-colors"
                                         title="Editar"
                                     >
                                         <Pencil class="w-4 h-4" />
@@ -194,7 +194,7 @@ const planLabel = (plan) => {
                             :href="link.url"
                             class="px-3 py-1.5 text-sm rounded-lg transition-colors"
                             :class="link.active
-                                ? 'bg-amber-600 text-white font-medium'
+                                ? 'bg-[#0052FF] text-white font-medium'
                                 : 'text-gray-600 hover:bg-gray-100'"
                             v-html="link.label"
                             preserve-state
@@ -216,7 +216,7 @@ const planLabel = (plan) => {
             <p class="text-sm text-gray-500 mb-6">Crea el primer restaurante para comenzar.</p>
             <Link
                 href="/superadmin/tenants/create"
-                class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-[#0052FF] text-white text-sm font-medium rounded-lg hover:bg-[#0047DB] transition-colors"
             >
                 <Plus class="w-4 h-4" />
                 Nuevo Restaurante

@@ -99,7 +99,7 @@ class MenuWebController extends Controller
             ],
             'customer_phone' => $customerPhone,
             'theme' => [
-                'primary_color' => $theme['primary_color'] ?? '#4f46e5',
+                'primary_color' => $theme['primary_color'] ?? '#0052FF',
                 'logo_url' => $theme['logo_url'] ?? null,
                 'show_restaurant_name' => $theme['show_restaurant_name'] ?? true,
             ],

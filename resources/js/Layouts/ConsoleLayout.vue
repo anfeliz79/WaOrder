@@ -32,9 +32,7 @@ const switchBranch = (branchId) => {
         <header class="h-14 bg-gray-900 flex items-center justify-between px-4 shadow-lg">
             <div class="flex items-center gap-3">
                 <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-lg flex items-center justify-center">
-                        <MonitorDot class="w-4.5 h-4.5 text-white" />
-                    </div>
+                    <img src="/images/logo-icon-white.png" alt="WaOrder" class="h-7" />
                     <span class="text-white font-semibold text-sm sm:text-base">Consola de Pedidos</span>
                 </div>
 
@@ -45,7 +43,7 @@ const switchBranch = (branchId) => {
                         <select
                             :value="currentBranch?.id"
                             @change="switchBranch(Number($event.target.value))"
-                            class="appearance-none bg-gray-800 text-gray-300 text-sm rounded-lg border border-gray-700 pl-3 pr-8 py-1.5 focus:ring-1 focus:ring-emerald-400 focus:border-emerald-400 cursor-pointer hover:bg-gray-700 transition-colors"
+                            class="appearance-none bg-gray-800 text-gray-300 text-sm rounded-lg border border-gray-700 pl-3 pr-8 py-1.5 focus:ring-1 focus:ring-primary-400 focus:border-primary-400 cursor-pointer hover:bg-gray-700 transition-colors"
                         >
                             <option v-for="branch in branches" :key="branch.id" :value="branch.id">
                                 {{ branch.name }}
@@ -64,7 +62,7 @@ const switchBranch = (branchId) => {
                     v-if="branches.length > 1"
                     :value="currentBranch?.id"
                     @change="switchBranch(Number($event.target.value))"
-                    class="sm:hidden appearance-none bg-gray-800 text-gray-300 text-xs rounded-lg border border-gray-700 px-2 py-1.5 focus:ring-1 focus:ring-emerald-400 max-w-[120px]"
+                    class="sm:hidden appearance-none bg-gray-800 text-gray-300 text-xs rounded-lg border border-gray-700 px-2 py-1.5 focus:ring-1 focus:ring-primary-400 max-w-[120px]"
                 >
                     <option v-for="branch in branches" :key="branch.id" :value="branch.id">
                         {{ branch.name }}

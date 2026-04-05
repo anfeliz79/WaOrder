@@ -17,11 +17,8 @@
     {{-- Navigation --}}
     <nav class="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
-            <a href="/" class="flex items-center gap-2.5">
-                <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-lg flex items-center justify-center">
-                    <span class="text-white font-bold text-sm">W</span>
-                </div>
-                <span class="font-bold text-lg text-gray-900">WaOrder</span>
+            <a href="/" class="flex items-center">
+                <img src="/images/logo.png" alt="WaOrder" class="h-8" />
             </a>
             <div class="hidden md:flex items-center gap-8">
                 <a href="#features" class="text-sm text-gray-600 hover:text-gray-900 transition-colors">Funciones</a>
@@ -35,7 +32,7 @@
                     Contacto
                 </a>
                 <a href="/login" class="text-sm font-medium text-gray-700 hover:text-gray-900 px-4 py-2">Iniciar Sesion</a>
-                <a href="/register" class="text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-5 py-2.5 rounded-lg transition-colors">Registrate</a>
+                <a href="/register" class="text-sm font-medium text-white bg-[#0052FF] hover:bg-[#0047DB] px-5 py-2.5 rounded-lg transition-colors">Registrate</a>
             </div>
             <button @click="mobileMenu = !mobileMenu" class="md:hidden p-2 text-gray-600">
                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -53,27 +50,27 @@
             <hr class="border-gray-100">
             <a href="https://wa.me/{{ config('app.whatsapp_contact', '18091234567') }}?text={{ urlencode('Hola, me interesa WaOrder.') }}" target="_blank" class="block text-sm font-medium text-green-600 py-2">Contactar por WhatsApp</a>
             <a href="/login" class="block text-sm font-medium text-gray-700 py-2">Iniciar Sesion</a>
-            <a href="/register" class="block text-sm font-medium text-center text-white bg-indigo-600 rounded-lg py-2.5">Registrate</a>
+            <a href="/register" class="block text-sm font-medium text-center text-white bg-[#0052FF] rounded-lg py-2.5">Registrate</a>
         </div>
     </nav>
 
     {{-- Hero --}}
     <section class="pt-28 pb-20 sm:pt-36 sm:pb-28">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-            <div class="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 text-xs font-medium px-3 py-1.5 rounded-full mb-6">
-                <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></span>
+            <div class="inline-flex items-center gap-2 bg-blue-50 text-[#0047DB] text-xs font-medium px-3 py-1.5 rounded-full mb-6">
+                <span class="w-1.5 h-1.5 bg-[#0052FF] rounded-full animate-pulse"></span>
                 Plataforma SaaS para restaurantes
             </div>
             <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-gray-900 leading-tight">
                 Recibe pedidos por<br>
-                <span class="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">WhatsApp</span>
+                <span class="bg-gradient-to-r from-[#0052FF] to-[#00D1FF] bg-clip-text text-transparent">WhatsApp</span>
                 automaticamente
             </h1>
             <p class="mt-6 text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed">
                 Un chatbot inteligente que toma pedidos, gestiona el menu, rastrea entregas y cobra a tus clientes. Todo desde el WhatsApp que ya usan.
             </p>
             <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-                <a href="/register" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200">
+                <a href="/register" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-[#0052FF] text-white font-semibold rounded-xl hover:bg-[#0047DB] transition-all shadow-lg shadow-blue-200">
                     Empezar ahora
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                 </a>
@@ -105,9 +102,9 @@
                 ];
                 @endphp
                 @foreach($features as $feature)
-                <div class="bg-white rounded-2xl p-6 border border-gray-100 hover:border-indigo-100 hover:shadow-lg hover:shadow-indigo-50 transition-all duration-300">
-                    <div class="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">{!! $feature['icon'] !!}</svg>
+                <div class="bg-white rounded-2xl p-6 border border-gray-100 hover:border-blue-100 hover:shadow-lg hover:shadow-blue-50 transition-all duration-300">
+                    <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-[#0052FF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">{!! $feature['icon'] !!}</svg>
                     </div>
                     <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $feature['title'] }}</h3>
                     <p class="text-sm text-gray-500 leading-relaxed">{{ $feature['desc'] }}</p>
@@ -134,7 +131,7 @@
                 @endphp
                 @foreach($steps as $step)
                 <div class="text-center">
-                    <div class="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center text-xl font-bold mx-auto mb-5">
+                    <div class="w-14 h-14 bg-[#0052FF] text-white rounded-2xl flex items-center justify-center text-xl font-bold mx-auto mb-5">
                         {{ $step['num'] }}
                     </div>
                     <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $step['title'] }}</h3>
@@ -154,12 +151,12 @@
                 {{-- Billing toggle --}}
                 <div class="mt-8 inline-flex items-center bg-white border border-gray-200 rounded-xl p-1">
                     <button @click="billing = 'monthly'"
-                        :class="billing === 'monthly' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+                        :class="billing === 'monthly' ? 'bg-[#0052FF] text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'"
                         class="px-5 py-2 text-sm font-medium rounded-lg transition-all">
                         Mensual
                     </button>
                     <button @click="billing = 'annual'"
-                        :class="billing === 'annual' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+                        :class="billing === 'annual' ? 'bg-[#0052FF] text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'"
                         class="px-5 py-2 text-sm font-medium rounded-lg transition-all">
                         Anual
                         <span class="ml-1 text-xs opacity-75">(-17%)</span>
@@ -172,9 +169,9 @@
                 @php
                     $isPopular = $index === 1 && count($plans) > 1;
                 @endphp
-                <div class="relative bg-white rounded-2xl border {{ $isPopular ? 'border-indigo-200 shadow-xl shadow-indigo-100 ring-2 ring-indigo-600' : 'border-gray-200 shadow-sm' }} overflow-hidden">
+                <div class="relative bg-white rounded-2xl border {{ $isPopular ? 'border-blue-200 shadow-xl shadow-blue-100 ring-2 ring-[#0052FF]' : 'border-gray-200 shadow-sm' }} overflow-hidden">
                     @if($isPopular)
-                    <div class="bg-indigo-600 text-white text-xs font-semibold text-center py-1.5">Mas Popular</div>
+                    <div class="bg-[#0052FF] text-white text-xs font-semibold text-center py-1.5">Mas Popular</div>
                     @endif
                     <div class="p-8">
                         <h3 class="text-xl font-bold text-gray-900">{{ $plan->name }}</h3>
@@ -194,13 +191,13 @@
                         <a href="/register?plan={{ $plan->slug }}"
                             class="mt-8 block w-full text-center py-3 rounded-xl text-sm font-semibold transition-all
                             {{ $isPopular
-                                ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200'
+                                ? 'bg-[#0052FF] text-white hover:bg-[#0047DB] shadow-lg shadow-blue-200'
                                 : 'bg-gray-900 text-white hover:bg-gray-800' }}">
                             Empezar
                         </a>
 
                         @php
-                            $check = '<svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+                            $check = '<svg class="w-4 h-4 text-[#0052FF] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
                         @endphp
                         <ul class="mt-8 space-y-3">
                             <li class="flex items-center gap-3 text-sm text-gray-600">
@@ -225,19 +222,19 @@
                             </li>
                             @if($plan->whatsapp_bot_enabled)
                             <li class="flex items-center gap-3 text-sm text-gray-600">
-                                <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                <svg class="w-4 h-4 text-[#0052FF] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                                 Bot de WhatsApp
                             </li>
                             @endif
                             @if($plan->ai_enabled)
                             <li class="flex items-center gap-3 text-sm text-gray-600">
-                                <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                <svg class="w-4 h-4 text-[#0052FF] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                                 Reconocimiento IA
                             </li>
                             @endif
                             @if($plan->external_menu_enabled)
                             <li class="flex items-center gap-3 text-sm text-gray-600">
-                                <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                <svg class="w-4 h-4 text-[#0052FF] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                                 Menu externo (API)
                             </li>
                             @endif
@@ -297,12 +294,12 @@
     </section>
 
     {{-- CTA --}}
-    <section class="py-20 bg-indigo-600">
+    <section class="py-20 bg-[#0052FF]">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
             <h2 class="text-3xl sm:text-4xl font-bold text-white">Listo para automatizar tus pedidos?</h2>
-            <p class="mt-4 text-lg text-indigo-100">Registrate y configura tu restaurante en minutos.</p>
+            <p class="mt-4 text-lg text-blue-100">Registrate y configura tu restaurante en minutos.</p>
             <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-                <a href="/register" class="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-indigo-600 font-semibold rounded-xl hover:bg-indigo-50 transition-all">
+                <a href="/register" class="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-[#0052FF] font-semibold rounded-xl hover:bg-blue-50 transition-all">
                     Crear mi cuenta
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                 </a>
@@ -319,11 +316,8 @@
     <footer class="py-12 bg-gray-900">
         <div class="max-w-6xl mx-auto px-4 sm:px-6">
             <div class="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-lg flex items-center justify-center">
-                        <span class="text-white font-bold text-sm">W</span>
-                    </div>
-                    <span class="font-bold text-lg text-white">WaOrder</span>
+                <div class="flex items-center">
+                    <img src="/images/logo.png" alt="WaOrder" class="h-8" />
                 </div>
                 <div class="flex items-center gap-6 text-sm text-gray-400">
                     <a href="#features" class="hover:text-white transition-colors">Funciones</a>

@@ -10,7 +10,7 @@ const error = ref(null);
 const tenant = ref(null);
 const customerPhone = ref('');
 const categories = ref([]);
-const theme = ref({ primary_color: '#4f46e5', logo_url: null, show_restaurant_name: true });
+const theme = ref({ primary_color: '#0052FF', logo_url: null, show_restaurant_name: true });
 const selectedCategory = ref(null);
 const selectedItem = ref(null);
 const submitting = ref(false);
@@ -96,7 +96,7 @@ function hexToHsl(hex) {
 }
 
 const themeVars = computed(() => {
-    const hex = theme.value.primary_color || '#4f46e5';
+    const hex = theme.value.primary_color || '#0052FF';
     const [h, s] = hexToHsl(hex);
     return {
         '--color-primary-50':  `hsl(${h}, ${s}%, 97%)`,

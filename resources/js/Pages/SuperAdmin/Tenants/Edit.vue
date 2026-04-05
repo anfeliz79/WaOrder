@@ -128,7 +128,7 @@ const formatDate = (date) => {
             <button
                 v-if="tenant.is_active"
                 @click="impersonateTenant"
-                class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors"
+                class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-[#0052FF] bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
                 title="Entrar como admin de este restaurante"
             >
                 <LogIn class="w-4 h-4" />
@@ -145,7 +145,7 @@ const formatDate = (date) => {
                     @click="activeTab = tab.key"
                     class="pb-3 text-sm font-medium border-b-2 transition-colors"
                     :class="activeTab === tab.key
-                        ? 'border-amber-600 text-amber-600'
+                        ? 'border-[#0052FF] text-[#0052FF]'
                         : 'border-transparent text-gray-500 hover:text-gray-700'"
                 >
                     {{ tab.label }}
@@ -166,7 +166,7 @@ const formatDate = (date) => {
                                 v-model="form.name"
                                 type="text"
                                 required
-                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                             />
                             <p v-if="form.errors.name" class="text-red-500 text-xs mt-1">{{ form.errors.name }}</p>
                         </div>
@@ -178,7 +178,7 @@ const formatDate = (date) => {
                                 v-model="form.slug"
                                 type="text"
                                 required
-                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                             />
                             <p v-if="form.errors.slug" class="text-red-500 text-xs mt-1">{{ form.errors.slug }}</p>
                         </div>
@@ -188,7 +188,7 @@ const formatDate = (date) => {
                             <label class="block text-sm font-medium text-gray-700 mb-1">Zona Horaria</label>
                             <select
                                 v-model="form.timezone"
-                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                             >
                                 <option v-for="tz in timezones" :key="tz.value" :value="tz.value">{{ tz.label }}</option>
                             </select>
@@ -200,7 +200,7 @@ const formatDate = (date) => {
                             <label class="block text-sm font-medium text-gray-700 mb-1">Moneda</label>
                             <select
                                 v-model="form.currency"
-                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                             >
                                 <option v-for="c in currencies" :key="c.value" :value="c.value">{{ c.label }}</option>
                             </select>
@@ -212,7 +212,7 @@ const formatDate = (date) => {
                             <label class="block text-sm font-medium text-gray-700 mb-1">Plan</label>
                             <select
                                 v-model="form.subscription_plan"
-                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                             >
                                 <option v-for="p in plans" :key="p.value" :value="p.value">{{ p.label }}</option>
                             </select>
@@ -223,7 +223,7 @@ const formatDate = (date) => {
                         <div class="flex items-center gap-3 pt-6">
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input v-model="form.is_active" type="checkbox" class="sr-only peer" />
-                                <div class="w-9 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-amber-500/20 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
+                                <div class="w-9 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-[#0052FF]/20 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0052FF]"></div>
                             </label>
                             <span class="text-sm font-medium text-gray-700">Activo</span>
                         </div>
@@ -239,7 +239,7 @@ const formatDate = (date) => {
                             <input
                                 v-model="form.whatsapp_phone_number_id"
                                 type="text"
-                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                                 placeholder="Ej: 123456789012345"
                             />
                             <p v-if="form.errors.whatsapp_phone_number_id" class="text-red-500 text-xs mt-1">{{ form.errors.whatsapp_phone_number_id }}</p>
@@ -250,7 +250,7 @@ const formatDate = (date) => {
                             <input
                                 v-model="form.whatsapp_business_account_id"
                                 type="text"
-                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                                 placeholder="Ej: 123456789012345"
                             />
                             <p v-if="form.errors.whatsapp_business_account_id" class="text-red-500 text-xs mt-1">{{ form.errors.whatsapp_business_account_id }}</p>
@@ -261,7 +261,7 @@ const formatDate = (date) => {
                             <input
                                 v-model="form.whatsapp_access_token"
                                 type="password"
-                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                                 placeholder="••••••• (encriptado) — dejar vacio para no cambiar"
                             />
                             <p class="text-xs text-gray-400 mt-1">Dejar vacio para mantener el token actual.</p>
@@ -290,7 +290,7 @@ const formatDate = (date) => {
                         <button
                             type="submit"
                             :disabled="form.processing"
-                            class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-[#0052FF] text-white text-sm font-medium rounded-lg hover:bg-[#0047DB] disabled:opacity-50 transition-colors"
                         >
                             <Save class="w-4 h-4" />
                             Guardar Cambios
@@ -347,8 +347,8 @@ const formatDate = (date) => {
             <!-- Additional info -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center gap-4">
-                    <div class="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
-                        <Users class="w-5 h-5 text-violet-600" />
+                    <div class="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center">
+                        <Users class="w-5 h-5 text-[#00D1FF]" />
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Usuarios</p>

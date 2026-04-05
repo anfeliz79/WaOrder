@@ -43,7 +43,7 @@ const formatPrice = (price, currency = 'DOP') => {
                 <p class="text-sm text-gray-500 mt-1">Configura los planes de suscripcion de la plataforma.</p>
             </div>
             <Link href="/superadmin/plans/create"
-                class="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors">
+                class="inline-flex items-center gap-2 px-4 py-2.5 bg-[#0052FF] text-white text-sm font-medium rounded-lg hover:bg-[#0047DB] transition-colors">
                 <Plus class="w-4 h-4" />
                 Nuevo Plan
             </Link>
@@ -74,7 +74,7 @@ const formatPrice = (price, currency = 'DOP') => {
                     <p v-if="plan.price_annual" class="text-sm text-gray-500 mt-1">
                         {{ formatPrice(plan.price_annual, plan.currency) }}/anual
                     </p>
-                    <p v-if="plan.trial_days > 0" class="text-sm text-amber-600 font-medium mt-2">
+                    <p v-if="plan.trial_days > 0" class="text-sm text-[#0052FF] font-medium mt-2">
                         {{ plan.trial_days }} dias de prueba
                     </p>
                 </div>
@@ -111,7 +111,7 @@ const formatPrice = (price, currency = 'DOP') => {
                         <span v-if="plan.whatsapp_bot_enabled" class="px-2 py-0.5 bg-green-50 text-green-700 text-xs rounded-full">WhatsApp</span>
                         <span v-if="plan.ai_enabled" class="px-2 py-0.5 bg-purple-50 text-purple-700 text-xs rounded-full">IA</span>
                         <span v-if="plan.external_menu_enabled" class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">Menu externo</span>
-                        <span v-if="plan.custom_domain" class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full">Dominio</span>
+                        <span v-if="plan.custom_domain" class="px-2 py-0.5 bg-blue-50 text-[#0047DB] text-xs rounded-full">Dominio</span>
                     </div>
 
                     <!-- Add-ons -->
@@ -140,7 +140,7 @@ const formatPrice = (price, currency = 'DOP') => {
                     </button>
                     <div class="flex items-center gap-2">
                         <Link :href="`/superadmin/plans/${plan.id}/edit`"
-                            class="p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors">
+                            class="p-2 text-gray-500 hover:text-[#0052FF] hover:bg-blue-50 rounded-lg transition-colors">
                             <Pencil class="w-4 h-4" />
                         </Link>
                         <button @click="deletePlan(plan)"
@@ -161,7 +161,7 @@ const formatPrice = (price, currency = 'DOP') => {
         <!-- Empty state -->
         <div v-if="!plans.length" class="text-center py-16">
             <p class="text-gray-500">No hay planes creados.</p>
-            <Link href="/superadmin/plans/create" class="text-amber-600 hover:text-amber-700 font-medium mt-2 inline-block">
+            <Link href="/superadmin/plans/create" class="text-[#0052FF] hover:text-[#0047DB] font-medium mt-2 inline-block">
                 Crear primer plan
             </Link>
         </div>

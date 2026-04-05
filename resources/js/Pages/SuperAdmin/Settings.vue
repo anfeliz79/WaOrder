@@ -36,7 +36,7 @@ const submit = () => {
             <!-- Cardnet Platform Credentials -->
             <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                 <div class="flex items-center gap-3 mb-4">
-                    <CreditCard class="w-5 h-5 text-amber-600" />
+                    <CreditCard class="w-5 h-5 text-[#0052FF]" />
                     <h2 class="text-lg font-semibold text-gray-900">Cardnet — Pagos Recurrentes</h2>
                 </div>
                 <p class="text-sm text-gray-500 mb-4">
@@ -47,7 +47,7 @@ const submit = () => {
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Ambiente</label>
                         <select v-model="form.cardnet_environment"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3385ff] focus:border-[#0052FF]">
                             <option value="testing">Testing (Lab)</option>
                             <option value="production">Produccion</option>
                         </select>
@@ -56,7 +56,7 @@ const submit = () => {
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Public Key</label>
                         <input v-model="form.cardnet_public_key" type="text"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3385ff] focus:border-[#0052FF]"
                             :placeholder="settings.cardnet_has_keys ? settings.cardnet_public_key : 'No configurada'" />
                         <p class="mt-1 text-xs text-gray-400">Dejar vacio para mantener la clave actual.</p>
                     </div>
@@ -64,7 +64,7 @@ const submit = () => {
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Private Key</label>
                         <input v-model="form.cardnet_private_key" type="password"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3385ff] focus:border-[#0052FF]"
                             :placeholder="settings.cardnet_has_keys ? settings.cardnet_private_key : 'No configurada'" />
                         <p class="mt-1 text-xs text-gray-400">Dejar vacio para mantener la clave actual.</p>
                     </div>
@@ -95,7 +95,7 @@ const submit = () => {
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Proveedor</label>
                         <select v-model="form.ai_provider"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500">
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3385ff] focus:border-[#0052FF]">
                             <option value="groq">Groq (gratuito, recomendado)</option>
                             <option value="openai">OpenAI</option>
                         </select>
@@ -104,7 +104,7 @@ const submit = () => {
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
                         <input v-model="form.ai_api_key" type="password"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3385ff] focus:border-[#0052FF]"
                             :placeholder="settings.ai_has_key ? settings.ai_api_key : 'No configurada'" />
                         <p class="mt-1 text-xs text-gray-400">Dejar vacio para mantener la clave actual.</p>
                     </div>
@@ -133,7 +133,7 @@ const submit = () => {
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Numero WhatsApp</label>
                     <input v-model="form.whatsapp_contact" type="text"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3385ff] focus:border-[#0052FF]"
                         placeholder="18091234567 (sin + ni espacios)" />
                 </div>
             </div>
@@ -141,7 +141,7 @@ const submit = () => {
             <!-- Submit -->
             <div class="flex items-center justify-end">
                 <button type="submit" :disabled="form.processing"
-                    class="px-6 py-2.5 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors">
+                    class="px-6 py-2.5 text-sm font-medium text-white bg-[#0052FF] rounded-lg hover:bg-[#0047DB] disabled:opacity-50 transition-colors">
                     {{ form.processing ? 'Guardando...' : 'Guardar Configuracion' }}
                 </button>
             </div>

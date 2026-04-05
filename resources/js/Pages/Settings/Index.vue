@@ -542,7 +542,7 @@ const formatBuildDate = (iso) => {
 const marcaForm = useForm({
     settings: {
         menu_theme: {
-            primary_color: props.tenant?.settings?.menu_theme?.primary_color || '#4f46e5',
+            primary_color: props.tenant?.settings?.menu_theme?.primary_color || '#0052FF',
             show_restaurant_name: props.tenant?.settings?.menu_theme?.show_restaurant_name ?? true,
         },
     },
@@ -593,7 +593,7 @@ function hexToHsl(hex) {
 }
 
 const previewThemeVars = computed(() => {
-    const hex = marcaForm.settings.menu_theme.primary_color || '#4f46e5';
+    const hex = marcaForm.settings.menu_theme.primary_color || '#0052FF';
     const [h, s] = hexToHsl(hex);
     return {
         '--color-primary-50':  `hsl(${h},${s}%,97%)`,
@@ -1861,7 +1861,7 @@ const previewName = computed(() => props.tenant?.name || 'Mi Restaurante');
                             <input type="color" v-model="marcaForm.settings.menu_theme.primary_color"
                                    class="w-12 h-10 rounded-lg border border-gray-200 cursor-pointer p-0.5 bg-white" />
                             <input type="text" v-model="marcaForm.settings.menu_theme.primary_color"
-                                   placeholder="#4f46e5"
+                                   placeholder="#0052FF"
                                    class="flex-1 px-3 py-2 border rounded-lg font-mono text-sm uppercase"
                                    pattern="^#[0-9a-fA-F]{6}$" />
                         </div>

@@ -24,9 +24,7 @@ const submit = () => {
         <div class="max-w-md w-full relative">
             <!-- Logo -->
             <div class="text-center mb-8">
-                <div class="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-primary-500 to-violet-500 rounded-xl shadow-lg shadow-primary-600/30 mb-4">
-                    <span class="text-2xl font-bold text-white">W</span>
-                </div>
+                <img src="/images/logo.png" alt="WaOrder" class="h-10 mx-auto mb-4" />
                 <h1 class="text-2xl font-bold text-gray-900">Bienvenido a WaOrder</h1>
                 <p class="text-gray-500 mt-1">Gestion de pedidos via WhatsApp</p>
             </div>

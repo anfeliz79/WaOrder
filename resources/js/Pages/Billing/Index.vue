@@ -114,7 +114,7 @@ const invoiceStatusBadge = (status) => {
                         </div>
                         <div class="flex gap-2 mt-4">
                             <button @click="showChangePlanModal = true"
-                                class="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">
+                                class="px-4 py-2 text-sm font-medium text-[#0052FF] bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
                                 Cambiar Plan
                             </button>
                             <button v-if="subscription?.status === 'cancelled'" @click="reactivate"
@@ -153,7 +153,7 @@ const invoiceStatusBadge = (status) => {
                                 <div :class="[
                                     'h-2 rounded-full transition-all',
                                     usagePercent(item.current, item.max) >= 90 ? 'bg-red-500' :
-                                    usagePercent(item.current, item.max) >= 70 ? 'bg-amber-500' : 'bg-indigo-500'
+                                    usagePercent(item.current, item.max) >= 70 ? 'bg-amber-500' : 'bg-[#0052FF]'
                                 ]" :style="{ width: usagePercent(item.current, item.max) + '%' }"></div>
                             </div>
                         </div>
@@ -228,7 +228,7 @@ const invoiceStatusBadge = (status) => {
                     <label v-for="p in plans" :key="p.id"
                         :class="[
                             'block border rounded-xl p-4 cursor-pointer transition-all',
-                            selectedPlanId === p.id ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300',
+                            selectedPlanId === p.id ? 'border-[#0052FF] bg-blue-50' : 'border-gray-200 hover:border-gray-300',
                             subscription?.plan?.id === p.id ? 'ring-2 ring-green-200' : ''
                         ]">
                         <input type="radio" v-model="selectedPlanId" :value="p.id" class="sr-only" />
@@ -244,7 +244,7 @@ const invoiceStatusBadge = (status) => {
                 <div class="mt-6 flex justify-end gap-3">
                     <button @click="showChangePlanModal = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
                     <button @click="changePlan" :disabled="!selectedPlanId || selectedPlanId === subscription?.plan?.id"
-                        class="px-6 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-colors">
+                        class="px-6 py-2 text-sm font-medium text-white bg-[#0052FF] rounded-lg hover:bg-[#0047DB] disabled:opacity-40 transition-colors">
                         Confirmar Cambio
                     </button>
                 </div>

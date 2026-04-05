@@ -88,7 +88,7 @@ const plans = [
                             v-model="form.name"
                             type="text"
                             required
-                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                             placeholder="Ej: Pizzeria Don Mario"
                         />
                         <p v-if="form.errors.name" class="text-red-500 text-xs mt-1">{{ form.errors.name }}</p>
@@ -102,7 +102,7 @@ const plans = [
                             @input="onSlugInput"
                             type="text"
                             required
-                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                             placeholder="pizzeria-don-mario"
                         />
                         <p class="text-xs text-gray-400 mt-1">Se usa en la URL. Solo letras, numeros y guiones.</p>
@@ -114,7 +114,7 @@ const plans = [
                         <label class="block text-sm font-medium text-gray-700 mb-1">Zona Horaria</label>
                         <select
                             v-model="form.timezone"
-                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                         >
                             <option v-for="tz in timezones" :key="tz.value" :value="tz.value">{{ tz.label }}</option>
                         </select>
@@ -126,7 +126,7 @@ const plans = [
                         <label class="block text-sm font-medium text-gray-700 mb-1">Moneda</label>
                         <select
                             v-model="form.currency"
-                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                         >
                             <option v-for="c in currencies" :key="c.value" :value="c.value">{{ c.label }}</option>
                         </select>
@@ -138,7 +138,7 @@ const plans = [
                         <label class="block text-sm font-medium text-gray-700 mb-1">Plan</label>
                         <select
                             v-model="form.subscription_plan"
-                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                         >
                             <option v-for="p in plans" :key="p.value" :value="p.value">{{ p.label }}</option>
                         </select>
@@ -149,7 +149,7 @@ const plans = [
                     <div class="flex items-center gap-3 pt-6">
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input v-model="form.is_active" type="checkbox" class="sr-only peer" />
-                            <div class="w-9 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-amber-500/20 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
+                            <div class="w-9 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-[#0052FF]/20 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0052FF]"></div>
                         </label>
                         <span class="text-sm font-medium text-gray-700">Activo</span>
                     </div>
@@ -167,7 +167,7 @@ const plans = [
                             v-model="form.admin_name"
                             type="text"
                             required
-                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                             placeholder="Juan Perez"
                         />
                         <p v-if="form.errors.admin_name" class="text-red-500 text-xs mt-1">{{ form.errors.admin_name }}</p>
@@ -180,7 +180,7 @@ const plans = [
                             v-model="form.admin_email"
                             type="email"
                             required
-                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                             placeholder="admin@restaurante.com"
                         />
                         <p v-if="form.errors.admin_email" class="text-red-500 text-xs mt-1">{{ form.errors.admin_email }}</p>
@@ -194,7 +194,7 @@ const plans = [
                             type="password"
                             required
                             minlength="8"
-                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                             placeholder="Minimo 8 caracteres"
                         />
                         <p v-if="form.errors.admin_password" class="text-red-500 text-xs mt-1">{{ form.errors.admin_password }}</p>
@@ -213,7 +213,7 @@ const plans = [
                         <input
                             v-model="form.branch_name"
                             type="text"
-                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                             placeholder="Ej: Sucursal Centro"
                         />
                         <p v-if="form.errors.branch_name" class="text-red-500 text-xs mt-1">{{ form.errors.branch_name }}</p>
@@ -225,7 +225,7 @@ const plans = [
                         <input
                             v-model="form.branch_address"
                             type="text"
-                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
                             placeholder="Calle Principal #123"
                         />
                         <p v-if="form.errors.branch_address" class="text-red-500 text-xs mt-1">{{ form.errors.branch_address }}</p>
@@ -244,7 +244,7 @@ const plans = [
                 <button
                     type="submit"
                     :disabled="form.processing"
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-[#0052FF] text-white text-sm font-medium rounded-lg hover:bg-[#0047DB] disabled:opacity-50 transition-colors"
                 >
                     <Save class="w-4 h-4" />
                     Crear Restaurante

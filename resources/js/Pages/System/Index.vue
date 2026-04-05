@@ -123,7 +123,7 @@ function toggleHelp(key) {
             <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-primary-500 to-violet-500 flex items-center justify-center">
+                        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-primary-500 to-accent-end flex items-center justify-center">
                             <Rocket class="w-5 h-5 text-white" />
                         </div>
                         <div>

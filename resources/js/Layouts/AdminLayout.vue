@@ -118,8 +118,7 @@ const pageTitle = computed(() => {
                         <!-- Mobile sidebar header -->
                         <div class="flex items-center justify-between h-16 px-5">
                             <Link href="/dashboard" class="text-lg font-bold text-white flex items-center gap-2">
-                                <span class="w-8 h-8 bg-gradient-to-br from-primary-500 to-violet-500 rounded-xl flex items-center justify-center text-sm font-bold text-white">W</span>
-                                WaOrder
+                                <img src="/images/logo-white.png" alt="WaOrder" class="h-7" />
                             </Link>
                             <button @click="sidebarOpen = false" class="text-slate-400 hover:text-white transition-colors">
                                 <X class="w-5 h-5" />
@@ -131,7 +130,7 @@ const pageTitle = computed(() => {
                             <select
                                 :value="currentBranch?.id"
                                 @change="switchBranch(Number($event.target.value))"
-                                class="w-full bg-white/5 text-indigo-200 text-sm rounded-lg border-0 px-3 py-2 focus:ring-1 focus:ring-primary-400"
+                                class="w-full bg-white/5 text-blue-200 text-sm rounded-lg border-0 px-3 py-2 focus:ring-1 focus:ring-primary-400"
                             >
                                 <option v-for="branch in branches" :key="branch.id" :value="branch.id" class="bg-slate-800">
                                     {{ branch.name }}
@@ -146,8 +145,8 @@ const pageTitle = computed(() => {
                                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150"
                                   :class="isActive(item.href)
                                       ? 'border-l-3 border-primary-400 bg-sidebar-active text-white'
-                                      : 'text-indigo-200/70 hover:text-white hover:bg-sidebar-hover'">
-                                <component :is="item.icon" class="w-5 h-5" :class="isActive(item.href) ? 'text-primary-300' : 'text-indigo-300/50'" />
+                                      : 'text-blue-200/70 hover:text-white hover:bg-sidebar-hover'">
+                                <component :is="item.icon" class="w-5 h-5" :class="isActive(item.href) ? 'text-primary-300' : 'text-blue-300/50'" />
                                 {{ item.name }}
                             </Link>
                         </nav>
@@ -162,8 +161,7 @@ const pageTitle = computed(() => {
                 <!-- Logo -->
                 <div class="flex items-center h-16 px-5">
                     <Link href="/dashboard" class="text-lg font-bold text-white flex items-center gap-2.5">
-                        <span class="w-8 h-8 bg-gradient-to-br from-primary-500 to-violet-500 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-primary-600/30">W</span>
-                        WaOrder
+                        <img src="/images/logo-white.png" alt="WaOrder" class="h-7" />
                     </Link>
                 </div>
 
@@ -172,11 +170,11 @@ const pageTitle = computed(() => {
                     <div class="relative">
                         <button
                             @click="branchDropdownOpen = !branchDropdownOpen"
-                            class="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-indigo-200 transition-colors"
+                            class="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-blue-200 transition-colors"
                         >
-                            <Building2 class="w-4 h-4 text-indigo-300/60 shrink-0" />
+                            <Building2 class="w-4 h-4 text-blue-300/60 shrink-0" />
                             <span class="truncate flex-1 text-left">{{ currentBranch?.name || 'Sin sucursal' }}</span>
-                            <ChevronsUpDown v-if="branches.length > 1" class="w-3.5 h-3.5 text-indigo-300/40 shrink-0" />
+                            <ChevronsUpDown v-if="branches.length > 1" class="w-3.5 h-3.5 text-blue-300/40 shrink-0" />
                         </button>
                         <div v-if="branchDropdownOpen && branches.length > 1"
                              class="absolute left-0 right-0 mt-1 bg-slate-800 rounded-lg shadow-xl border border-slate-700 py-1 z-50 max-h-48 overflow-y-auto">
@@ -187,7 +185,7 @@ const pageTitle = computed(() => {
                                 class="w-full text-left px-3 py-2 text-sm transition-colors"
                                 :class="branch.id === currentBranch?.id
                                     ? 'text-primary-300 bg-white/5'
-                                    : 'text-indigo-200/70 hover:text-white hover:bg-white/5'"
+                                    : 'text-blue-200/70 hover:text-white hover:bg-white/5'"
                             >
                                 {{ branch.name }}
                             </button>
@@ -201,8 +199,8 @@ const pageTitle = computed(() => {
                           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150"
                           :class="isActive(item.href)
                               ? 'border-l-3 border-primary-400 bg-sidebar-active text-white'
-                              : 'text-indigo-200/70 hover:text-white hover:bg-sidebar-hover'">
-                        <component :is="item.icon" class="w-5 h-5" :class="isActive(item.href) ? 'text-primary-300' : 'text-indigo-300/50'" />
+                              : 'text-blue-200/70 hover:text-white hover:bg-sidebar-hover'">
+                        <component :is="item.icon" class="w-5 h-5" :class="isActive(item.href) ? 'text-primary-300' : 'text-blue-300/50'" />
                         {{ item.name }}
                     </Link>
                 </nav>

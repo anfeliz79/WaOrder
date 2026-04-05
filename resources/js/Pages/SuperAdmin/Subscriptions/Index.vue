@@ -107,7 +107,7 @@ const billingPeriodLabel = (period) => {
         <div class="flex flex-col sm:flex-row gap-3 mb-6">
             <select
                 v-model="statusFilter"
-                class="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                class="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
             >
                 <option value="">Todos los estados</option>
                 <option value="active">Activa</option>
@@ -120,7 +120,7 @@ const billingPeriodLabel = (period) => {
             </select>
             <select
                 v-model="planFilter"
-                class="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                class="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-[#0052FF]/20 focus:border-[#0052FF] outline-none"
             >
                 <option value="">Todos los planes</option>
                 <option v-for="plan in plans" :key="plan.id" :value="plan.id">
@@ -251,7 +251,7 @@ const billingPeriodLabel = (period) => {
                             :href="link.url"
                             class="px-3 py-1.5 text-sm rounded-lg transition-colors"
                             :class="link.active
-                                ? 'bg-amber-600 text-white font-medium'
+                                ? 'bg-[#0052FF] text-white font-medium'
                                 : 'text-gray-600 hover:bg-gray-100'"
                             v-html="link.label"
                             preserve-state

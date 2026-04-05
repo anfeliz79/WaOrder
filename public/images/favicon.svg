@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- WaOrder Favicon - WO compact -->
+  <rect width="32" height="32" rx="6" fill="#0052FF"/>
+  <g transform="translate(2, 6) scale(0.27)">
+    <!-- W letter -->
+    <path d="M0 8 L12 8 L22 46 L32 18 L36 18 L46 46 L56 8 L68 8 L52 58 L40 58 L34 38 L28 58 L16 58 Z" fill="#ffffff"/>
+
+    <!-- O circle - white -->
+    <path d="M92 10.5 C97.5 15.5 101 23 101 31.5 C101 47 88.464 58 74 58 C69 58 64.5 56.8 60.5 54.5" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round"/>
+
+    <!-- O circle - cyan -->
+    <path d="M60.5 54.5 C55.5 51.5 51.5 46.8 49.5 41" fill="none" stroke="#00D1FF" stroke-width="10" stroke-linecap="round"/>
+
+    <!-- Arrow head -->
+    <polygon points="96,6 86,0 88,14" fill="#ffffff"/>
+
+    <!-- Chat bubble tail -->
+    <path d="M56 54 C52 60 46 64 42 66 C48 64 54 60 58 55" fill="#00D1FF" stroke="#00D1FF" stroke-width="2" stroke-linejoin="round"/>
+  </g>
+</svg>

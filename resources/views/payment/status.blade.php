@@ -46,7 +46,7 @@
 
         <div class="mt-8 pt-6 border-t border-gray-100">
             <div class="flex items-center justify-center gap-2">
-                <div class="w-6 h-6 bg-gradient-to-br from-indigo-500 to-violet-600 rounded flex items-center justify-center">
+                <div class="w-6 h-6 bg-gradient-to-br from-[#0052FF] to-[#00D1FF] rounded flex items-center justify-center">
                     <span class="text-white font-bold text-xs">W</span>
                 </div>
                 <span class="text-sm font-medium text-gray-400">WaOrder</span>

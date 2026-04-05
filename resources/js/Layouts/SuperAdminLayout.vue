@@ -3,7 +3,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { Link, Head, router, usePage } from '@inertiajs/vue3'
 import {
     LayoutDashboard, Store, LogOut, Menu, X,
-    ChevronRight, Shield, CreditCard, Settings, Server, Receipt
+    ChevronRight, Shield, CreditCard, Settings, Server, Receipt,
+    Building2, ArrowUpDown
 } from 'lucide-vue-next'
 
 defineProps({
@@ -13,18 +14,21 @@ defineProps({
 const page = usePage()
 const user = computed(() => page.props.auth?.user)
 const flash = computed(() => page.props.flash)
-const alertCount = computed(() => page.props.alert_count ?? 0)
+const alertCount            = computed(() => page.props.alert_count ?? 0)
+const pendingTransfersCount = computed(() => page.props.pending_transfers_count ?? 0)
 const sidebarOpen = ref(false)
 const showFlash = ref(false)
 
 // Navigation items
 const navItems = [
-    { name: 'Dashboard', href: '/superadmin', icon: LayoutDashboard },
-    { name: 'Restaurantes', href: '/superadmin/tenants', icon: Store },
-    { name: 'Planes', href: '/superadmin/plans', icon: CreditCard },
-    { name: 'Suscripciones', href: '/superadmin/subscriptions', icon: Receipt },
-    { name: 'Sistema', href: '/superadmin/system', icon: Server },
-    { name: 'Configuracion', href: '/superadmin/settings', icon: Settings },
+    { name: 'Dashboard',       href: '/superadmin',                              icon: LayoutDashboard },
+    { name: 'Restaurantes',    href: '/superadmin/tenants',                      icon: Store },
+    { name: 'Planes',          href: '/superadmin/plans',                        icon: CreditCard },
+    { name: 'Suscripciones',   href: '/superadmin/subscriptions',                icon: Receipt },
+    { name: 'Transferencias',  href: '/superadmin/transfer-verifications',        icon: ArrowUpDown, badge: 'pendingTransfers' },
+    { name: 'Cuentas Bancarias', href: '/superadmin/bank-accounts',              icon: Building2 },
+    { name: 'Sistema',         href: '/superadmin/system',                       icon: Server },
+    { name: 'Configuracion',   href: '/superadmin/settings',                     icon: Settings },
 ]
 
 const isActive = (href) => {
@@ -57,18 +61,13 @@ watch(flash, (val) => {
 
         <!-- Sidebar -->
         <aside :class="[
-            'fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 text-white transform transition-transform duration-200 lg:translate-x-0',
+            'fixed inset-y-0 left-0 z-50 w-64 bg-[#00174D] text-white transform transition-transform duration-200 lg:translate-x-0',
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         ]">
             <!-- Logo -->
-            <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-700">
-                <div class="w-9 h-9 bg-amber-500 rounded-lg flex items-center justify-center">
-                    <Shield class="w-5 h-5 text-white" />
-                </div>
-                <div>
-                    <div class="font-bold text-lg leading-tight">WaOrder</div>
-                    <div class="text-xs text-amber-400 font-medium">Super Admin</div>
-                </div>
+            <div class="flex items-center gap-3 px-6 py-5 border-b border-white/10">
+                <img src="/images/logo-white.png" alt="WaOrder" class="h-7" />
+                <div class="text-xs text-[#00D1FF] font-medium">Super Admin</div>
             </div>
 
             <!-- Navigation -->
@@ -80,8 +79,8 @@ watch(flash, (val) => {
                     :class="[
                         'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                         isActive(item.href)
-                            ? 'bg-amber-600 text-white'
-                            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                            ? 'bg-[#0052FF] text-white'
+                            : 'text-blue-200/70 hover:bg-[#002370] hover:text-white'
                     ]"
                     @click="sidebarOpen = false"
                 >
@@ -91,26 +90,30 @@ watch(flash, (val) => {
                         v-if="item.href === '/superadmin' && alertCount > 0"
                         class="ml-auto bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none"
                     >{{ alertCount }}</span>
+                    <span
+                        v-if="item.badge === 'pendingTransfers' && pendingTransfersCount > 0"
+                        class="ml-auto bg-[#00D1FF] text-[#00174D] text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none"
+                    >{{ pendingTransfersCount }}</span>
                 </Link>
             </nav>
 
             <!-- User section -->
-            <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-700">
+            <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
                 <div class="flex items-center gap-3 mb-3">
-                    <div class="w-8 h-8 bg-amber-600 rounded-full flex items-center justify-center text-sm font-bold">
+                    <div class="w-8 h-8 bg-[#0052FF] rounded-full flex items-center justify-center text-sm font-bold">
                         {{ user?.name?.charAt(0) }}
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="text-sm font-medium truncate">{{ user?.name }}</div>
-                        <div class="text-xs text-amber-400">Super Admin</div>
+                        <div class="text-xs text-[#00D1FF]">Super Admin</div>
                     </div>
                 </div>
                 <button
                     @click="logout"
-                    class="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                    class="flex items-center gap-2 w-full px-3 py-2 text-sm text-blue-300/60 hover:text-white hover:bg-[#002370] rounded-lg transition-colors"
                 >
                     <LogOut class="w-4 h-4" />
-                    Cerrar Sesión
+                    Cerrar Sesion
                 </button>
             </div>
         </aside>

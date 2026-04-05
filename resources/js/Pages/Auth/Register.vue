@@ -55,15 +55,12 @@ const formatLimit = (value, singular, plural) => {
 <template>
     <Head title="Crear Cuenta — WaOrder" />
 
-    <div class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 flex items-center justify-center py-12 px-4">
+    <div class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center py-12 px-4">
         <div class="w-full max-w-xl">
             <!-- Logo -->
             <div class="text-center mb-8">
                 <Link href="/" class="inline-flex items-center gap-2.5">
-                    <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center">
-                        <span class="text-white font-bold text-lg">W</span>
-                    </div>
-                    <span class="font-bold text-2xl text-gray-900">WaOrder</span>
+                    <img src="/images/logo.png" alt="WaOrder" class="h-10" />
                 </Link>
             </div>
 
@@ -72,7 +69,7 @@ const formatLimit = (value, singular, plural) => {
                 <div v-for="s in totalSteps" :key="s"
                     :class="[
                         'h-2 rounded-full transition-all duration-300',
-                        s === step ? 'w-10 bg-indigo-600' : s < step ? 'w-6 bg-indigo-400' : 'w-6 bg-gray-200'
+                        s === step ? 'w-10 bg-[#0052FF]' : s < step ? 'w-6 bg-[#3385ff]' : 'w-6 bg-gray-200'
                     ]"></div>
             </div>
 
@@ -80,8 +77,8 @@ const formatLimit = (value, singular, plural) => {
                 <!-- Step 1: Account Info -->
                 <div v-show="step === 1" class="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 p-8">
                     <div class="flex items-center gap-3 mb-6">
-                        <div class="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
-                            <Store class="w-5 h-5 text-indigo-600" />
+                        <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                            <Store class="w-5 h-5 text-[#0052FF]" />
                         </div>
                         <div>
                             <h2 class="text-xl font-bold text-gray-900">Tu Restaurante</h2>
@@ -93,7 +90,7 @@ const formatLimit = (value, singular, plural) => {
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Restaurante</label>
                             <input v-model="form.restaurant_name" type="text" required autofocus
-                                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] transition-all"
                                 placeholder="Ej: Pizza Express" />
                             <p v-if="form.errors.restaurant_name" class="mt-1 text-sm text-red-600">{{ form.errors.restaurant_name }}</p>
                         </div>
@@ -101,7 +98,7 @@ const formatLimit = (value, singular, plural) => {
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Tu Nombre</label>
                             <input v-model="form.name" type="text" required
-                                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] transition-all"
                                 placeholder="Nombre completo" />
                             <p v-if="form.errors.name" class="mt-1 text-sm text-red-600">{{ form.errors.name }}</p>
                         </div>
@@ -109,7 +106,7 @@ const formatLimit = (value, singular, plural) => {
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                             <input v-model="form.email" type="email" required
-                                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] transition-all"
                                 placeholder="tu@email.com" />
                             <p v-if="form.errors.email" class="mt-1 text-sm text-red-600">{{ form.errors.email }}</p>
                         </div>
@@ -117,7 +114,7 @@ const formatLimit = (value, singular, plural) => {
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Contrasena</label>
                             <input v-model="form.password" type="password" required minlength="8"
-                                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] transition-all"
                                 placeholder="Minimo 8 caracteres" />
                             <p v-if="form.errors.password" class="mt-1 text-sm text-red-600">{{ form.errors.password }}</p>
                         </div>
@@ -125,7 +122,7 @@ const formatLimit = (value, singular, plural) => {
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar Contrasena</label>
                             <input v-model="form.password_confirmation" type="password" required
-                                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0052FF] focus:border-[#0052FF] transition-all"
                                 placeholder="Repite la contrasena" />
                         </div>
                     </div>
@@ -133,7 +130,7 @@ const formatLimit = (value, singular, plural) => {
                     <div class="mt-8 flex items-center justify-between">
                         <Link href="/login" class="text-sm text-gray-500 hover:text-gray-700">Ya tengo cuenta</Link>
                         <button type="button" @click="nextStep" :disabled="!canProceedStep1"
-                            class="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm">
+                            class="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0052FF] text-white font-medium rounded-xl hover:bg-[#0047DB] disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm">
                             Siguiente
                             <ArrowRight class="w-4 h-4" />
                         </button>
@@ -143,8 +140,8 @@ const formatLimit = (value, singular, plural) => {
                 <!-- Step 2: Plan Selection -->
                 <div v-show="step === 2" class="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 p-8">
                     <div class="flex items-center gap-3 mb-6">
-                        <div class="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
-                            <Sparkles class="w-5 h-5 text-indigo-600" />
+                        <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                            <Sparkles class="w-5 h-5 text-[#0052FF]" />
                         </div>
                         <div>
                             <h2 class="text-xl font-bold text-gray-900">Elige tu Plan</h2>
@@ -157,7 +154,7 @@ const formatLimit = (value, singular, plural) => {
                             :class="[
                                 'block border rounded-xl p-5 cursor-pointer transition-all',
                                 form.plan_slug === plan.slug
-                                    ? 'border-indigo-500 bg-indigo-50/50 ring-2 ring-indigo-500'
+                                    ? 'border-[#0052FF] bg-blue-50/50 ring-2 ring-[#0052FF]'
                                     : 'border-gray-200 hover:border-gray-300'
                             ]">
                             <input type="radio" v-model="form.plan_slug" :value="plan.slug" class="sr-only" />
@@ -183,8 +180,8 @@ const formatLimit = (value, singular, plural) => {
                                 </div>
                             </div>
                             <div class="mt-2 flex items-center gap-1.5" v-if="form.plan_slug === plan.slug">
-                                <Check class="w-4 h-4 text-indigo-600" />
-                                <span class="text-xs text-indigo-600 font-medium">Seleccionado</span>
+                                <Check class="w-4 h-4 text-[#0052FF]" />
+                                <span class="text-xs text-[#0052FF] font-medium">Seleccionado</span>
                             </div>
                         </label>
                     </div>
@@ -196,7 +193,7 @@ const formatLimit = (value, singular, plural) => {
                             Atras
                         </button>
                         <button type="button" @click="nextStep"
-                            class="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-all text-sm">
+                            class="inline-flex items-center gap-2 px-6 py-2.5 bg-[#0052FF] text-white font-medium rounded-xl hover:bg-[#0047DB] transition-all text-sm">
                             Siguiente
                             <ArrowRight class="w-4 h-4" />
                         </button>
@@ -227,7 +224,7 @@ const formatLimit = (value, singular, plural) => {
                             <hr class="border-gray-200">
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-500">Plan</span>
-                                <span class="font-semibold text-indigo-600">{{ selectedPlanData?.name }}</span>
+                                <span class="font-semibold text-[#0052FF]">{{ selectedPlanData?.name }}</span>
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-500">Precio</span>
@@ -253,7 +250,7 @@ const formatLimit = (value, singular, plural) => {
                             Atras
                         </button>
                         <button type="submit" :disabled="form.processing"
-                            class="inline-flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all text-sm shadow-lg shadow-indigo-200">
+                            class="inline-flex items-center gap-2 px-8 py-3 bg-[#0052FF] text-white font-semibold rounded-xl hover:bg-[#0047DB] disabled:opacity-50 transition-all text-sm shadow-lg shadow-blue-200">
                             {{ form.processing ? 'Creando cuenta...' : 'Crear Cuenta' }}
                         </button>
                     </div>
