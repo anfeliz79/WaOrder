@@ -36,7 +36,7 @@ class RegisterController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'plan_slug' => ['required', 'string', 'exists:plans,slug'],
-            'billing_period' => ['required', 'in:monthly,annual'],
+            'billing_period' => ['nullable', 'in:monthly,annual'],
         ], [
             'restaurant_name.required' => 'El nombre del restaurante es requerido.',
             'name.required' => 'Tu nombre es requerido.',
@@ -47,7 +47,7 @@ class RegisterController extends Controller
         ]);
 
         $plan = Plan::where('slug', $validated['plan_slug'])->firstOrFail();
-        $billingPeriod = $validated['billing_period'];
+        $billingPeriod = $validated['billing_period'] ?? 'monthly';
         $price = $plan->getPriceForPeriod($billingPeriod);
 
         return DB::transaction(function () use ($validated, $plan, $billingPeriod, $price, $request) {
