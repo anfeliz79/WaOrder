@@ -34,6 +34,8 @@ class RegistrationBankTransferController extends Controller
                 ->first()
             : null;
 
+        $user = auth()->user();
+
         return Inertia::render('Auth/RegisterBankTransferPending', [
             'verification' => $verification ? [
                 'id'               => $verification->id,
@@ -41,6 +43,7 @@ class RegistrationBankTransferController extends Controller
                 'amount'           => $verification->amount,
                 'reference_number' => $verification->reference_number,
                 'deadline_at'      => $verification->deadline_at?->toIso8601String(),
+                'created_at'       => $verification->created_at?->toIso8601String(),
                 'verified_at'      => $verification->verified_at?->toIso8601String(),
                 'admin_notes'      => $verification->admin_notes,
                 'bank_account'     => $verification->bankAccount ? [
@@ -49,6 +52,10 @@ class RegistrationBankTransferController extends Controller
                     'account_number'      => $verification->bankAccount->account_number,
                 ] : null,
             ] : null,
+            'tenant_name'      => $tenant->name,
+            'user_name'        => $user?->name,
+            'user_email'       => $user?->email,
+            'whatsapp_contact' => config('app.whatsapp_contact', ''),
         ]);
     }
 

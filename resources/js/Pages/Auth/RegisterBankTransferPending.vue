@@ -1,26 +1,48 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Head, router } from '@inertiajs/vue3'
-import { Clock, CheckCircle, XCircle, AlertTriangle, ArrowLeft, RefreshCw } from 'lucide-vue-next'
+import { Clock, CheckCircle, XCircle, AlertTriangle, ArrowLeft, RefreshCw, MessageCircle } from 'lucide-vue-next'
 
 const props = defineProps({
-    verification: Object, // null if no verification submitted yet
+    verification: Object,
+    tenant_name:  String,
+    user_name:    String,
+    user_email:   String,
+    whatsapp_contact: String,
 })
 
 const now = ref(new Date())
-let timer = null
+let tickTimer  = null
+let pollTimer  = null
 
 onMounted(() => {
-    timer = setInterval(() => { now.value = new Date() }, 30000)
+    // Update every second for real-time countdown
+    tickTimer = setInterval(() => { now.value = new Date() }, 1000)
 
-    // Auto-redirect if approved
     if (props.verification?.status === 'approved') {
         setTimeout(() => router.visit('/setup'), 2500)
+    } else if (props.verification?.status === 'pending') {
+        // Poll every 15 s — Inertia partial reload of just the verification prop
+        pollTimer = setInterval(() => {
+            router.reload({
+                only: ['verification'],
+                onSuccess: () => {
+                    if (props.verification?.status === 'approved') {
+                        clearInterval(pollTimer)
+                        setTimeout(() => router.visit('/setup'), 1500)
+                    }
+                },
+            })
+        }, 15000)
     }
 })
 
-onUnmounted(() => clearInterval(timer))
+onUnmounted(() => {
+    clearInterval(tickTimer)
+    clearInterval(pollTimer)
+})
 
+// ── Status config ──────────────────────────────────────────────────────────────
 const statusConfig = computed(() => {
     const status = props.verification?.status
     return {
@@ -71,14 +93,43 @@ const statusConfig = computed(() => {
     }
 })
 
+// ── Countdown (hours : minutes : seconds) ─────────────────────────────────────
 const timeLeft = computed(() => {
     if (!props.verification?.deadline_at || props.verification.status !== 'pending') return null
     const deadline = new Date(props.verification.deadline_at)
     const diff = deadline - now.value
-    if (diff <= 0) return '00:00'
+    if (diff <= 0) return '00h 00m 00s'
     const hours   = Math.floor(diff / 3_600_000)
     const minutes = Math.floor((diff % 3_600_000) / 60_000)
-    return `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m`
+    const seconds = Math.floor((diff % 60_000) / 1_000)
+    return `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`
+})
+
+// ── WhatsApp support link ──────────────────────────────────────────────────────
+const whatsappLink = computed(() => {
+    if (!props.whatsapp_contact) return null
+
+    const v = props.verification
+    const sentAt = v?.created_at
+        ? new Date(v.created_at).toLocaleString('es-DO', { dateStyle: 'short', timeStyle: 'short' })
+        : 'N/A'
+
+    const lines = [
+        `Hola, quisiera consultar el estado de mi transferencia pendiente:`,
+        ``,
+        `👤 *Cliente:* ${props.user_name ?? ''} (${props.user_email ?? ''})`,
+        `🍽️ *Restaurante:* ${props.tenant_name ?? ''}`,
+        ``,
+        `💳 *Datos de la transferencia:*`,
+        `• Banco: ${v?.bank_account?.bank_name ?? 'N/A'}`,
+        `• Monto: ${v ? parseFloat(v.amount).toLocaleString('es-DO', { style: 'currency', currency: 'DOP' }) : 'N/A'}`,
+        `• Referencia: ${v?.reference_number ?? 'Sin referencia'}`,
+        `• Enviado: ${sentAt}`,
+    ]
+
+    const text = encodeURIComponent(lines.join('\n'))
+    const phone = props.whatsapp_contact.replace(/\D/g, '')
+    return `https://wa.me/${phone}?text=${text}`
 })
 </script>
 
@@ -90,9 +141,7 @@ const timeLeft = computed(() => {
 
             <!-- Logo -->
             <div class="text-center mb-8">
-                <div class="inline-flex items-center gap-2.5">
-                    <img src="/images/logo.png" alt="WaOrder" class="h-10" />
-                </div>
+                <img src="/images/logo.png" alt="WaOrder" class="h-10 mx-auto" />
             </div>
 
             <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
@@ -117,7 +166,7 @@ const timeLeft = computed(() => {
                     <span class="font-medium">Motivo: </span>{{ verification.admin_notes }}
                 </div>
 
-                <!-- Transfer summary (pending/rejected/expired) -->
+                <!-- Transfer summary -->
                 <div v-if="verification && verification.status !== 'approved'"
                      class="bg-gray-50 rounded-xl border border-gray-200 p-4 mb-5 text-sm space-y-2">
                     <div v-if="verification.bank_account" class="flex justify-between">
@@ -126,7 +175,9 @@ const timeLeft = computed(() => {
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-500">Monto</span>
-                        <span class="font-medium text-gray-800">{{ parseFloat(verification.amount).toLocaleString('es-DO', { style: 'currency', currency: 'DOP' }) }}</span>
+                        <span class="font-medium text-gray-800">
+                            {{ parseFloat(verification.amount).toLocaleString('es-DO', { style: 'currency', currency: 'DOP' }) }}
+                        </span>
                     </div>
                     <div v-if="verification.reference_number" class="flex justify-between">
                         <span class="text-gray-500">Referencia</span>
@@ -134,11 +185,11 @@ const timeLeft = computed(() => {
                     </div>
                 </div>
 
-                <!-- Countdown (pending only) -->
+                <!-- Live countdown (pending only) -->
                 <div v-if="verification?.status === 'pending' && timeLeft"
                      class="flex items-center justify-center gap-2 text-sm text-amber-700 bg-amber-50 rounded-xl p-3 mb-5">
-                    <Clock class="w-4 h-4" />
-                    <span>Tiempo restante para revisión: <strong>{{ timeLeft }}</strong></span>
+                    <Clock class="w-4 h-4 shrink-0" />
+                    <span>Tiempo restante: <strong class="font-mono tabular-nums">{{ timeLeft }}</strong></span>
                 </div>
 
                 <!-- Actions -->
@@ -166,11 +217,21 @@ const timeLeft = computed(() => {
                         <ArrowLeft class="w-4 h-4" />
                         Volver al pago
                     </a>
+
+                    <!-- WhatsApp support (pending / rejected / expired + contact configured) -->
+                    <a v-if="whatsappLink && ['pending', 'rejected', 'expired'].includes(verification?.status)"
+                       :href="whatsappLink"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="flex items-center justify-center gap-2 w-full py-3 px-6 bg-[#25D366] text-white font-semibold rounded-xl hover:bg-[#1ebe5d] transition text-sm">
+                        <MessageCircle class="w-4 h-4" />
+                        Consultar por WhatsApp
+                    </a>
                 </div>
 
-                <!-- Info for pending -->
+                <!-- Pending info -->
                 <p v-if="verification?.status === 'pending'" class="mt-5 text-xs text-center text-gray-400">
-                    Puedes cerrar esta página. Te notificaremos por correo cuando se procese tu comprobante.
+                    Esta página se actualiza automáticamente. También puedes cerrarla y volver más tarde.
                 </p>
             </div>
 
