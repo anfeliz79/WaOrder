@@ -1,6 +1,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { usePage, router } from '@inertiajs/vue3';
 import { useToast } from '@/Composables/useToast';
+import { useBrowserNotifications } from '@/Composables/useBrowserNotifications';
 
 const DEFAULT_POLLING_INTERVAL = 10; // seconds
 
@@ -68,6 +69,7 @@ function playNotificationSound(customSoundUrl) {
 export function useOrderNotification() {
     const page = usePage();
     const toast = useToast();
+    const { notify: browserNotify } = useBrowserNotifications();
     const enabled = ref(page.props.notification_settings?.sound_enabled ?? false);
     const pollingInterval = ref(page.props.notification_settings?.polling_interval ?? DEFAULT_POLLING_INTERVAL);
     const customSoundUrl = ref(page.props.notification_settings?.custom_sound_url ?? null);
@@ -92,6 +94,18 @@ export function useOrderNotification() {
                     playNotificationSound(customSoundUrl.value);
                 }
                 toast.info(count === 1 ? '🛒 Nueva orden recibida' : `🛒 ${count} nuevas órdenes recibidas`);
+
+                // Browser notification when tab is not focused
+                browserNotify(
+                    count === 1 ? 'Nueva orden recibida' : `${count} nuevas ordenes`,
+                    {
+                        body: count === 1
+                            ? 'Tienes una nueva orden pendiente'
+                            : `Tienes ${count} ordenes nuevas pendientes`,
+                        tag: 'waorder-new-order',
+                        url: '/orders',
+                    }
+                );
 
                 // Auto-reload if on the orders or dashboard page
                 if (page.url.startsWith('/orders') || page.url.startsWith('/dashboard') || page.url.startsWith('/console')) {

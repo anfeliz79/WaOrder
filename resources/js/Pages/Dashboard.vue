@@ -1,13 +1,14 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Link, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { usePageAutoRefresh } from '@/Composables/usePageAutoRefresh';
 import { ShoppingBag, DollarSign, Flame, Clock, ArrowRight } from 'lucide-vue-next';
 import StatCard from '@/Components/StatCard.vue';
 import AppCard from '@/Components/AppCard.vue';
 import AppBadge from '@/Components/AppBadge.vue';
 import AppEmptyState from '@/Components/AppEmptyState.vue';
+import OnboardingChecklist from '@/Components/OnboardingChecklist.vue';
 import { statusConfig, getStatusLabel } from '@/Utils/orderStatus';
 import { formatCurrency, formatRelativeTime, getInitials, getAvatarColor } from '@/Utils/formatters';
 
@@ -16,10 +17,16 @@ defineOptions({ layout: AdminLayout });
 const props = defineProps({
     stats: Object,
     recentOrders: Array,
+    onboarding_checklist: Object,
 });
 
 // Keep dashboard stats and recent orders fresh
 usePageAutoRefresh(30);
+
+const checklistDismissed = ref(false);
+const showOnboarding = computed(() => {
+    return props.onboarding_checklist && !checklistDismissed.value;
+});
 
 const user = computed(() => usePage().props.auth?.user);
 
@@ -103,6 +110,14 @@ const statusDistribution = computed(() => {
             <h2 class="text-2xl font-bold text-gray-900">{{ greeting }}, {{ user?.name ?? 'Usuario' }}</h2>
             <p class="text-sm text-gray-500 mt-0.5 capitalize">{{ formattedDate }}</p>
         </div>
+
+        <!-- Onboarding checklist -->
+        <OnboardingChecklist
+            v-if="showOnboarding"
+            :checklist="onboarding_checklist"
+            class="mb-6"
+            @dismissed="checklistDismissed = true"
+        />
 
         <!-- Stats cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

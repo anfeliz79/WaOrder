@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
+use App\Models\MenuItem;
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
@@ -51,7 +54,20 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'stats' => $stats,
             'recentOrders' => $recentOrders,
+            'onboarding_checklist' => $this->getOnboardingChecklist(),
         ]);
+    }
+
+    public function dismissOnboarding(Request $request)
+    {
+        $tenant = app('tenant');
+        $settings = $tenant->settings ?? [];
+        $settings['onboarding_dismissed'] = true;
+        $tenant->update(['settings' => $settings]);
+
+        Cache::forget("onboarding_checklist_{$tenant->id}");
+
+        return back()->with('success', 'Guía de inicio ocultada.');
     }
 
     public function liveOrders()
@@ -77,6 +93,102 @@ class DashboardController extends Controller
         ]);
 
         return response()->json($orders);
+    }
+
+    private function getOnboardingChecklist(): ?array
+    {
+        $tenant = app()->bound('tenant') ? app('tenant') : null;
+        if (!$tenant) {
+            return null;
+        }
+
+        // Don't show if already dismissed
+        if ($tenant->getSetting('onboarding_dismissed', false)) {
+            return null;
+        }
+
+        return Cache::remember("onboarding_checklist_{$tenant->id}", 300, function () use ($tenant) {
+            $hasWhatsApp = !empty($tenant->whatsapp_phone_number_id)
+                && $tenant->whatsapp_phone_number_id !== 'DEMO_PHONE_ID';
+
+            $hasBranch = Branch::where('tenant_id', $tenant->id)
+                ->where('is_active', true)
+                ->exists();
+
+            $menuSource = $tenant->getMenuSource();
+            $hasMenu = false;
+            if ($menuSource === 'external') {
+                $hasMenu = !empty($tenant->getSetting('menu_api_url'));
+            } else {
+                $hasMenu = MenuItem::where('tenant_id', $tenant->id)
+                    ->where('is_active', true)
+                    ->exists();
+            }
+
+            $paymentMethods = $tenant->getSetting('payment.methods', []);
+            $hasPayment = !empty($paymentMethods);
+
+            $hasBusinessHours = (bool) $tenant->getSetting('business_hours.enabled', false);
+
+            $hasRestaurantName = !empty($tenant->name) && $tenant->name !== 'Mi Restaurante';
+
+            $items = [
+                [
+                    'key' => 'restaurant_info',
+                    'title' => 'Datos del restaurante',
+                    'description' => 'Nombre y datos basicos configurados',
+                    'link' => '/settings',
+                    'completed' => $hasRestaurantName,
+                ],
+                [
+                    'key' => 'whatsapp',
+                    'title' => 'WhatsApp configurado',
+                    'description' => 'Credenciales de la API de WhatsApp',
+                    'link' => '/settings',
+                    'completed' => $hasWhatsApp,
+                ],
+                [
+                    'key' => 'branch',
+                    'title' => 'Sucursal creada',
+                    'description' => 'Al menos una sucursal activa',
+                    'link' => '/branches',
+                    'completed' => $hasBranch,
+                ],
+                [
+                    'key' => 'menu',
+                    'title' => 'Menu con productos',
+                    'description' => 'Productos disponibles para pedidos',
+                    'link' => '/menu',
+                    'completed' => $hasMenu,
+                ],
+                [
+                    'key' => 'payment',
+                    'title' => 'Metodos de pago',
+                    'description' => 'Configura como recibiras pagos',
+                    'link' => '/settings',
+                    'completed' => $hasPayment,
+                ],
+                [
+                    'key' => 'business_hours',
+                    'title' => 'Horario de negocio',
+                    'description' => 'Define tu horario de atencion',
+                    'link' => '/settings',
+                    'completed' => $hasBusinessHours,
+                ],
+            ];
+
+            $completedCount = collect($items)->where('completed', true)->count();
+            $totalCount = count($items);
+
+            return [
+                'items' => $items,
+                'progress' => [
+                    'completed' => $completedCount,
+                    'total' => $totalCount,
+                    'percentage' => $totalCount > 0 ? round(($completedCount / $totalCount) * 100) : 0,
+                ],
+            ];
+        });
     }
 
     private function averageFulfillmentTime(?int $branchId = null): int

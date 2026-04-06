@@ -30,14 +30,42 @@ import {
     MonitorDot,
     AlertTriangle,
     Shield,
+    Info,
+    Pause,
+    Play,
+    BarChart3,
+    Bell,
 } from 'lucide-vue-next';
 import AppToast from '@/Components/AppToast.vue';
 import { useToast } from '@/Composables/useToast';
 import { getInitials, getAvatarColor } from '@/Utils/formatters';
 import { useOrderNotification } from '@/Composables/useOrderNotification';
+import { useBrowserNotifications } from '@/Composables/useBrowserNotifications';
 
 const page = usePage();
 const toast = useToast();
+
+// Browser notification permission banner
+const {
+    shouldShowBanner,
+    requestPermission,
+    dismissBanner,
+    permissionGranted: browserNotifGranted,
+} = useBrowserNotifications();
+const showNotifBanner = ref(shouldShowBanner());
+
+const enableBrowserNotifications = async () => {
+    const granted = await requestPermission();
+    showNotifBanner.value = false;
+    if (granted) {
+        toast.success('Notificaciones del navegador activadas');
+    }
+};
+
+const dismissNotifBanner = () => {
+    dismissBanner();
+    showNotifBanner.value = false;
+};
 
 // Watch Inertia flash messages and pipe them into the toast system
 watch(() => page.props.flash, (flash) => {
@@ -72,6 +100,7 @@ const allNavigation = [
     { name: 'Sucursales', href: '/branches', icon: Building2, permission: 'branches.manage' },
     { name: 'Usuarios', href: '/users', icon: UsersRound, permission: 'users.manage' },
     { name: 'Resenas', href: '/reviews', icon: Star, permission: 'reviews.view' },
+    { name: 'Reportes', href: '/reports', icon: BarChart3, permission: 'reports.view' },
     { name: 'Facturacion', href: '/billing', icon: CreditCard, permission: 'settings.manage' },
     { name: 'Configuracion', href: '/settings', icon: Settings, permission: 'settings.manage' },
 ];
@@ -85,7 +114,39 @@ const switchBranch = (branchId) => {
 
 const isActive = (href) => page.url.startsWith(href);
 
+const botStatus = computed(() => page.props.bot_status);
+const togglingBot = ref(false);
+
+const botStatusLabel = computed(() => {
+    if (!botStatus.value) return null;
+    if (botStatus.value.is_active) return 'Bot activo';
+    if (botStatus.value.reason === 'manually_paused') return 'Bot pausado';
+    if (botStatus.value.reason === 'outside_hours') return 'Fuera de horario';
+    if (botStatus.value.reason === 'no_credentials') return 'Sin configurar';
+    return 'Bot inactivo';
+});
+
+const toggleBotPause = () => {
+    if (togglingBot.value) return;
+    togglingBot.value = true;
+    router.post('/bot/toggle-pause', {}, {
+        preserveScroll: true,
+        onFinish: () => { togglingBot.value = false; },
+    });
+};
+
 const subscriptionAlert = computed(() => page.props.subscription_alert);
+const setupAlerts = computed(() => page.props.setup_alerts || []);
+const tenantNotices = computed(() => page.props.tenant_notices || []);
+const dismissedNotices = ref(new Set());
+
+const dismissNotice = (id) => {
+    dismissedNotices.value.add(id);
+};
+
+const visibleNotices = computed(() =>
+    tenantNotices.value.filter(n => !dismissedNotices.value.has(n.id))
+);
 const impersonating = computed(() => page.props.auth?.impersonating === true);
 const impersonatingTenantName = computed(() => page.props.auth?.tenant_name || '');
 
@@ -234,6 +295,40 @@ const pageTitle = computed(() => {
                 </div>
 
                 <div class="flex items-center gap-3">
+                    <!-- Bot status pill -->
+                    <div v-if="botStatus && isAdmin" class="flex items-center gap-1.5">
+                        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                             :class="botStatus.is_active
+                                 ? 'bg-green-50 text-green-700'
+                                 : botStatus.reason === 'manually_paused'
+                                     ? 'bg-amber-50 text-amber-700'
+                                     : 'bg-red-50 text-red-700'">
+                            <span class="relative flex h-2 w-2">
+                                <span v-if="botStatus.is_active"
+                                      class="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 animate-ping"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2"
+                                      :class="botStatus.is_active
+                                          ? 'bg-green-500'
+                                          : botStatus.reason === 'manually_paused'
+                                              ? 'bg-amber-500'
+                                              : 'bg-red-500'"></span>
+                            </span>
+                            <span class="hidden sm:inline">{{ botStatusLabel }}</span>
+                        </div>
+                        <button
+                            v-if="botStatus.reason !== 'no_credentials'"
+                            @click="toggleBotPause"
+                            :disabled="togglingBot"
+                            class="p-1 rounded-md transition-colors"
+                            :class="botStatus.is_paused
+                                ? 'text-green-600 hover:bg-green-50'
+                                : 'text-gray-400 hover:bg-gray-100 hover:text-amber-600'"
+                            :title="botStatus.is_paused ? 'Reactivar bot' : 'Pausar bot'">
+                            <Play v-if="botStatus.is_paused" class="w-3.5 h-3.5" />
+                            <Pause v-else class="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+
                     <!-- User menu -->
                     <Menu as="div" class="relative" v-if="user">
                         <MenuButton class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
@@ -311,6 +406,89 @@ const pageTitle = computed(() => {
                       :class="subscriptionAlert.type === 'danger' ? 'text-red-700 hover:text-red-900' : 'text-amber-700 hover:text-amber-900'">
                     Ver planes
                 </Link>
+            </div>
+
+            <!-- Setup readiness alerts (non-dismissible) -->
+            <div v-for="(alert, idx) in setupAlerts" :key="'setup-' + idx"
+                 class="flex items-center justify-between gap-4 px-4 sm:px-6 py-3 border-b bg-amber-50 border-amber-200 text-sm">
+                <div class="flex items-center gap-2 min-w-0">
+                    <AlertTriangle class="w-4 h-4 shrink-0 text-amber-500" />
+                    <span class="text-amber-700">{{ alert.message }}</span>
+                </div>
+                <Link :href="alert.link"
+                      class="shrink-0 font-semibold underline underline-offset-2 whitespace-nowrap text-amber-700 hover:text-amber-900">
+                    {{ alert.link_text }}
+                </Link>
+            </div>
+
+            <!-- Tenant notices -->
+            <template v-for="notice in visibleNotices" :key="notice.id">
+                <div
+                    class="flex items-center justify-between gap-4 px-4 sm:px-6 py-3 border-b text-sm"
+                    :class="{
+                        'bg-blue-50 border-blue-200': notice.type === 'info',
+                        'bg-amber-50 border-amber-200': notice.type === 'warning',
+                        'bg-red-50 border-red-200': notice.type === 'danger',
+                        'bg-green-50 border-green-200': notice.type === 'success',
+                    }"
+                >
+                    <div class="flex items-center gap-2 min-w-0">
+                        <AlertTriangle v-if="notice.type === 'warning' || notice.type === 'danger'"
+                                       class="w-4 h-4 shrink-0"
+                                       :class="notice.type === 'danger' ? 'text-red-500' : 'text-amber-500'" />
+                        <Info v-else class="w-4 h-4 shrink-0"
+                              :class="notice.type === 'success' ? 'text-green-500' : 'text-blue-500'" />
+                        <div class="min-w-0">
+                            <span class="font-medium"
+                                  :class="{
+                                      'text-blue-700': notice.type === 'info',
+                                      'text-amber-700': notice.type === 'warning',
+                                      'text-red-700': notice.type === 'danger',
+                                      'text-green-700': notice.type === 'success',
+                                  }">
+                                {{ notice.title }}
+                            </span>
+                            <span class="ml-1"
+                                  :class="{
+                                      'text-blue-600': notice.type === 'info',
+                                      'text-amber-600': notice.type === 'warning',
+                                      'text-red-600': notice.type === 'danger',
+                                      'text-green-600': notice.type === 'success',
+                                  }">
+                                {{ notice.message }}
+                            </span>
+                        </div>
+                    </div>
+                    <button
+                        v-if="notice.dismissible"
+                        @click="dismissNotice(notice.id)"
+                        class="shrink-0 p-1 rounded-lg hover:bg-black/5 transition-colors"
+                    >
+                        <X class="w-4 h-4 text-gray-400" />
+                    </button>
+                </div>
+            </template>
+
+            <!-- Browser notification permission banner -->
+            <div v-if="showNotifBanner"
+                 class="flex items-center justify-between gap-3 px-4 sm:px-6 py-2.5 bg-blue-50 border-b border-blue-200 text-sm">
+                <div class="flex items-center gap-2 min-w-0">
+                    <Bell class="w-4 h-4 text-blue-500 shrink-0" />
+                    <span class="text-blue-700">Activa las notificaciones del navegador para no perderte pedidos nuevos</span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button
+                        @click="enableBrowserNotifications"
+                        class="px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+                        Activar
+                    </button>
+                    <button
+                        @click="dismissNotifBanner"
+                        class="p-1 text-blue-400 hover:text-blue-600 transition-colors"
+                        title="No mostrar de nuevo">
+                        <X class="w-4 h-4" />
+                    </button>
+                </div>
             </div>
 
             <!-- Page content with transition -->
