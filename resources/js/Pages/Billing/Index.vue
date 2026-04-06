@@ -1,12 +1,13 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Head, router, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import {
     CreditCard, ArrowUpRight, X, Check, AlertTriangle, Clock,
     Store, UtensilsCrossed, Truck, Users, ShoppingBag,
-    Wallet, Building2, Headphones, Smartphone, Loader2
+    Wallet, Building2, Headphones, Smartphone, Loader2, Pencil, ShieldCheck
 } from 'lucide-vue-next'
+import axios from 'axios'
 
 defineOptions({ layout: AdminLayout })
 
@@ -16,16 +17,30 @@ const props = defineProps({
     invoices: Array,
     plans: Array,
     usage: Object,
+    availablePaymentMethods: { type: Array, default: () => [] },
+    publicKey: String,
+    checkoutScriptBase: String,
+    bankAccounts: { type: Array, default: () => [] },
 })
 
 const page = usePage()
 const showChangePlanModal = ref(false)
 const showCancelModal = ref(false)
+const showPaymentMethodModal = ref(false)
 const cancelReason = ref('')
 const selectedPlanId = ref(null)
 const togglingAddon = ref(null)
 const changingPlan = ref(false)
 const cancelling = ref(false)
+
+// ── Payment method change state ─────────────────────────────────────────────
+const selectedPaymentMethod = ref(null)
+const cardState = ref('idle') // idle | loading_script | ready | processing | success | error
+const cardError = ref('')
+const scriptLoaded = ref(false)
+const paypalLoading = ref(false)
+const paypalError = ref(null)
+const bankTransferLoading = ref(false)
 
 const plan = computed(() => props.subscription?.plan)
 const limits = computed(() => plan.value || {})
@@ -56,8 +71,35 @@ const availableAddons = computed(() => {
     return addons
 })
 
-const toggleAddon = (addonType, currentlyActive) => {
+const toggleAddon = async (addonType, currentlyActive) => {
     togglingAddon.value = addonType
+
+    // For PayPal addon activation, use fetch to detect if approval is needed
+    if (!currentlyActive && props.subscription?.payment_method === 'paypal') {
+        try {
+            const response = await fetch('/billing/addon/toggle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ addon_type: addonType, action: 'activate' }),
+            })
+            const data = await response.json()
+            if (data.paypal_approval_url) {
+                openPayPalPopup(data.paypal_approval_url)
+                return // Don't reset togglingAddon — postMessage handler will do it
+            }
+            // No approval needed (shouldn't happen for PayPal, but handle gracefully)
+            router.reload({ onFinish: () => { togglingAddon.value = null } })
+        } catch {
+            togglingAddon.value = null
+            router.reload()
+        }
+        return
+    }
+
     router.post('/billing/addon/toggle', {
         addon_type: addonType,
         action: currentlyActive ? 'deactivate' : 'activate',
@@ -74,6 +116,7 @@ const statusBadge = computed(() => {
         past_due: { label: 'Pago pendiente', class: 'bg-amber-100 text-amber-700' },
         cancelled: { label: 'Cancelado', class: 'bg-red-100 text-red-700' },
         suspended: { label: 'Suspendido', class: 'bg-red-100 text-red-700' },
+        pending_payment: { label: 'Pago pendiente', class: 'bg-amber-100 text-amber-700' },
     }
     return map[props.subscription?.status] || { label: 'Sin plan', class: 'bg-gray-100 text-gray-700' }
 })
@@ -93,9 +136,38 @@ const usagePercent = (current, max) => {
     return Math.min(100, Math.round((current / max) * 100))
 }
 
-const changePlan = () => {
+const changePlan = async () => {
     if (!selectedPlanId.value || changingPlan.value) return
     changingPlan.value = true
+
+    // For PayPal, use fetch to detect approval redirect
+    if (isPayPal.value) {
+        try {
+            const response = await fetch('/billing/change-plan', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ plan_id: selectedPlanId.value }),
+            })
+            const data = await response.json()
+            if (data.paypal_approval_url) {
+                openPayPalPopup(data.paypal_approval_url)
+                return // postMessage handler resets state
+            }
+            // No approval needed (downgrade) — reload
+            showChangePlanModal.value = false
+            changingPlan.value = false
+            router.reload()
+        } catch {
+            changingPlan.value = false
+            router.reload()
+        }
+        return
+    }
+
     router.post('/billing/change-plan', { plan_id: selectedPlanId.value }, {
         preserveScroll: true,
         onSuccess: () => { showChangePlanModal.value = false },
@@ -113,7 +185,8 @@ const cancelSubscription = () => {
     })
 }
 
-const isPayPal = computed(() => props.paymentMethod?.type === 'paypal')
+const isPayPal = computed(() => props.subscription?.payment_method === 'paypal')
+const isBankTransfer = computed(() => props.subscription?.payment_method === 'bank_transfer')
 
 const reactivate = () => {
     router.post('/billing/reactivate', {}, { preserveScroll: true })
@@ -128,6 +201,159 @@ const invoiceStatusBadge = (status) => {
         refunded: { label: 'Reembolsado', class: 'bg-blue-100 text-blue-700' },
     }
     return map[status] || { label: status, class: 'bg-gray-100 text-gray-600' }
+}
+
+// ── Addon messaging based on payment method ─────────────────────────────────
+const addonNote = computed(() => {
+    const method = props.subscription?.payment_method
+    if (method === 'paypal') return 'Activar un addon redirige a PayPal para aprobar el ajuste en tu suscripcion.'
+    if (method === 'bank_transfer') return 'El costo del addon se incluira en tu proximo ciclo de facturacion.'
+    if (method === 'cardnet') return 'El addon se activara inmediatamente y se cargara a tu tarjeta.'
+    return null
+})
+
+// ── PayPal popup helper ─────────────────────────────────────────────────────
+const openPayPalPopup = (url) => {
+    const w = 500, h = 700
+    const left = (screen.width - w) / 2
+    const top = (screen.height - h) / 2
+    return window.open(url, 'PayPalPopup', `width=${w},height=${h},left=${left},top=${top},scrollbars=yes`)
+}
+
+onMounted(() => {
+    window.addEventListener('message', handlePayPalMessage)
+})
+
+onUnmounted(() => {
+    window.removeEventListener('message', handlePayPalMessage)
+})
+
+const handlePayPalMessage = (event) => {
+    if (event.data?.type !== 'paypal-complete') return
+    // Reload page to reflect changes
+    paypalLoading.value = false
+    togglingAddon.value = null
+    changingPlan.value = false
+    showPaymentMethodModal.value = false
+    showChangePlanModal.value = false
+    router.reload()
+}
+
+// ── Payment method icon map ─────────────────────────────────────────────────
+const methodIconMap = { cardnet: CreditCard, bank_transfer: Building2, paypal: Wallet }
+const getMethodIcon = (slug) => methodIconMap[slug] || Wallet
+const getMethodLabel = (slug) => ({ cardnet: 'Tarjeta de credito', bank_transfer: 'Transferencia Bancaria', paypal: 'PayPal' })[slug] || slug
+
+// ── Change Payment Method Logic ─────────────────────────────────────────────
+const openPaymentMethodModal = () => {
+    showPaymentMethodModal.value = true
+    selectedPaymentMethod.value = null
+    cardState.value = 'idle'
+    cardError.value = ''
+    paypalError.value = null
+}
+
+const selectPaymentMethodTab = (slug) => {
+    selectedPaymentMethod.value = slug
+    if (slug === 'cardnet' && !scriptLoaded.value && props.publicKey) {
+        loadCheckoutScript()
+    }
+}
+
+// Cardnet PWCheckout
+const loadCheckoutScript = () => {
+    if (cardState.value !== 'idle') return
+    cardState.value = 'loading_script'
+    const script = document.createElement('script')
+    script.src = `${props.checkoutScriptBase}/Scripts/PWCheckout.js?key=${props.publicKey}`
+    script.async = true
+    script.onload = initCheckout
+    script.onerror = () => {
+        cardState.value = 'error'
+        cardError.value = 'No se pudo cargar el modulo de pago.'
+    }
+    document.head.appendChild(script)
+}
+
+const initCheckout = () => {
+    if (!window.PWCheckout) {
+        cardState.value = 'error'
+        cardError.value = 'Error al inicializar el modulo de pago.'
+        return
+    }
+    window.PWCheckout.SetProperties({
+        name: 'WaOrder',
+        button_label: 'Guardar tarjeta',
+        currency: plan.value?.currency || 'DOP',
+        amount: '0.00',
+        form_id: 'billing-cardnet-form',
+        lang: 'ESP',
+    })
+    window.PWCheckout.AddActionButton('billing-cardnet-pay-btn')
+    window.PWCheckout.Bind('tokenCreated', handleTokenCreated)
+    window.PWCheckout.Bind('tokenError', () => {
+        cardState.value = 'error'
+        cardError.value = 'No se pudo procesar la tarjeta. Verifica los datos e intenta de nuevo.'
+    })
+    scriptLoaded.value = true
+    cardState.value = 'ready'
+}
+
+const handleTokenCreated = async (tokenObj) => {
+    cardState.value = 'processing'
+    cardError.value = ''
+    try {
+        const response = await axios.post('/billing/payment-method/tokenize', {
+            token_id: tokenObj.TokenId,
+            brand: tokenObj.Brand,
+            last4: tokenObj.Last4,
+            expiry_month: tokenObj.CardExpMonth,
+            expiry_year: tokenObj.CardExpYear,
+        })
+        if (response.data.success) {
+            cardState.value = 'success'
+            showPaymentMethodModal.value = false
+            router.reload()
+        }
+    } catch (err) {
+        cardState.value = 'error'
+        cardError.value = err.response?.data?.message || 'Error al guardar la tarjeta.'
+    }
+}
+
+// Bank transfer switch
+const switchToBankTransfer = () => {
+    bankTransferLoading.value = true
+    router.post('/billing/payment-method/bank-transfer', {}, {
+        preserveScroll: true,
+        onSuccess: () => { showPaymentMethodModal.value = false },
+        onFinish: () => { bankTransferLoading.value = false },
+    })
+}
+
+// PayPal switch
+const switchToPayPal = async () => {
+    paypalLoading.value = true
+    paypalError.value = null
+    try {
+        const response = await fetch('/billing/payment-method/paypal', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+            },
+        })
+        const data = await response.json()
+        if (data.approval_url) {
+            openPayPalPopup(data.approval_url)
+        } else {
+            paypalError.value = data.error || 'Error al conectar con PayPal'
+            paypalLoading.value = false
+        }
+    } catch (error) {
+        paypalError.value = 'Error de conexion. Intenta de nuevo.'
+        paypalLoading.value = false
+    }
 }
 </script>
 
@@ -249,9 +475,7 @@ const invoiceStatusBadge = (status) => {
                             </div>
                         </div>
                     </div>
-                    <p v-if="subscription?.payment_method === 'paypal'" class="mt-3 text-xs text-gray-400">
-                        Activar un addon redirige a PayPal para aprobar el ajuste en tu suscripcion.
-                    </p>
+                    <p v-if="addonNote" class="mt-3 text-xs text-gray-400">{{ addonNote }}</p>
                 </div>
 
                 <!-- Invoice History -->
@@ -289,7 +513,15 @@ const invoiceStatusBadge = (status) => {
             <div class="space-y-6">
                 <!-- Payment Method -->
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Metodo de Pago</h2>
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-semibold text-gray-900">Metodo de Pago</h2>
+                        <button v-if="availablePaymentMethods.length > 1"
+                            @click="openPaymentMethodModal"
+                            class="flex items-center gap-1 text-xs font-medium text-[#0052FF] hover:text-[#0047DB] transition-colors">
+                            <Pencil class="w-3.5 h-3.5" />
+                            Cambiar
+                        </button>
+                    </div>
 
                     <!-- Card (Cardnet) -->
                     <div v-if="paymentMethod?.type === 'cardnet' || (paymentMethod && !paymentMethod.type)" class="flex items-center gap-3">
@@ -330,13 +562,121 @@ const invoiceStatusBadge = (status) => {
 
                     <!-- No payment method -->
                     <div v-else class="text-sm text-gray-500">
-                        No hay metodo de pago registrado.
+                        <p>No hay metodo de pago registrado.</p>
+                        <button v-if="availablePaymentMethods.length"
+                            @click="openPaymentMethodModal"
+                            class="mt-2 text-xs font-medium text-[#0052FF] hover:underline">
+                            Configurar metodo de pago
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Change Plan Modal -->
+        <!-- ═══ CHANGE PAYMENT METHOD MODAL ═══ -->
+        <div v-if="showPaymentMethodModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-black/50" @click="showPaymentMethodModal = false"></div>
+            <div class="relative bg-white rounded-2xl shadow-xl max-w-md w-full p-6 max-h-[85vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-5">
+                    <h3 class="text-lg font-bold text-gray-900">Cambiar Metodo de Pago</h3>
+                    <button @click="showPaymentMethodModal = false" class="p-1 text-gray-400 hover:text-gray-600">
+                        <X class="w-5 h-5" />
+                    </button>
+                </div>
+
+                <!-- Method tabs -->
+                <div class="flex rounded-xl border border-gray-200 p-1 mb-5 gap-1">
+                    <button
+                        v-for="method in availablePaymentMethods"
+                        :key="method.slug"
+                        @click="selectPaymentMethodTab(method.slug)"
+                        :class="['flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition',
+                                 selectedPaymentMethod === method.slug ? 'bg-[#0052FF] text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50']"
+                    >
+                        <component :is="getMethodIcon(method.slug)" class="w-4 h-4" />
+                        {{ getMethodLabel(method.slug) }}
+                    </button>
+                </div>
+
+                <!-- Cardnet -->
+                <template v-if="selectedPaymentMethod === 'cardnet'">
+                    <div v-if="cardError" class="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl flex items-start gap-2">
+                        <AlertTriangle class="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                        <p class="text-sm text-red-700">{{ cardError }}</p>
+                    </div>
+
+                    <form id="billing-cardnet-form">
+                        <input type="hidden" name="PWToken" id="PWToken" />
+                    </form>
+
+                    <div v-if="cardState === 'loading_script'" class="flex items-center justify-center py-8 gap-2 text-gray-500">
+                        <Loader2 class="w-5 h-5 animate-spin" />
+                        <span class="text-sm">Cargando modulo de pago...</span>
+                    </div>
+                    <div v-else-if="cardState === 'processing'" class="flex items-center justify-center py-8 gap-2 text-[#0052FF]">
+                        <Loader2 class="w-5 h-5 animate-spin" />
+                        <span class="text-sm font-medium">Guardando tarjeta...</span>
+                    </div>
+                    <div v-else-if="cardState === 'ready'">
+                        <button id="billing-cardnet-pay-btn" type="button"
+                            class="w-full py-3 px-6 bg-[#0052FF] text-white font-semibold rounded-xl hover:bg-[#0047DB] transition-all text-sm shadow-lg shadow-blue-200 flex items-center justify-center gap-2">
+                            <CreditCard class="w-4 h-4" />
+                            Ingresar datos de tarjeta
+                        </button>
+                    </div>
+                    <div v-else class="flex items-center justify-center py-8 gap-2 text-gray-500">
+                        <Loader2 class="w-5 h-5 animate-spin" />
+                        <span class="text-sm">Inicializando...</span>
+                    </div>
+
+                    <div class="mt-4 flex items-center justify-center gap-1.5 text-gray-400">
+                        <ShieldCheck class="w-4 h-4" />
+                        <p class="text-xs">Pago seguro procesado por Cardnet</p>
+                    </div>
+                </template>
+
+                <!-- Bank Transfer -->
+                <template v-else-if="selectedPaymentMethod === 'bank_transfer'">
+                    <div class="text-center py-4">
+                        <div class="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                            <Building2 class="w-7 h-7 text-gray-500" />
+                        </div>
+                        <h4 class="font-semibold text-gray-900">Transferencia Bancaria</h4>
+                        <p class="text-sm text-gray-500 mt-1">Los pagos futuros seran via transferencia bancaria con verificacion manual.</p>
+                    </div>
+                    <button @click="switchToBankTransfer" :disabled="bankTransferLoading"
+                        class="w-full py-3 px-6 bg-[#0052FF] text-white font-semibold rounded-xl hover:bg-[#0047DB] transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+                        <Loader2 v-if="bankTransferLoading" class="w-4 h-4 animate-spin" />
+                        <Check v-else class="w-4 h-4" />
+                        {{ bankTransferLoading ? 'Cambiando...' : 'Cambiar a Transferencia' }}
+                    </button>
+                </template>
+
+                <!-- PayPal -->
+                <template v-else-if="selectedPaymentMethod === 'paypal'">
+                    <div class="text-center py-4">
+                        <div class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                            <Wallet class="w-7 h-7 text-blue-600" />
+                        </div>
+                        <h4 class="font-semibold text-gray-900">PayPal</h4>
+                        <p class="text-sm text-gray-500 mt-1">Seras redirigido a PayPal para vincular tu cuenta.</p>
+                    </div>
+                    <button @click="switchToPayPal" :disabled="paypalLoading"
+                        class="w-full py-3 px-4 bg-[#0070ba] hover:bg-[#003087] text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+                        <span v-if="paypalLoading" class="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full"></span>
+                        <span v-else>Vincular PayPal</span>
+                    </button>
+                    <p v-if="paypalError" class="text-sm text-red-600 text-center mt-3">{{ paypalError }}</p>
+                </template>
+
+                <!-- No selection yet -->
+                <div v-else class="text-center py-8 text-sm text-gray-400">
+                    Selecciona un metodo de pago arriba
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ CHANGE PLAN MODAL ═══ -->
         <div v-if="showChangePlanModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div class="fixed inset-0 bg-black/50" @click="showChangePlanModal = false"></div>
             <div class="relative bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 max-h-[80vh] overflow-y-auto">
@@ -380,7 +720,7 @@ const invoiceStatusBadge = (status) => {
             </div>
         </div>
 
-        <!-- Cancel Modal -->
+        <!-- ═══ CANCEL MODAL ═══ -->
         <div v-if="showCancelModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div class="fixed inset-0 bg-black/50" @click="showCancelModal = false"></div>
             <div class="relative bg-white rounded-2xl shadow-xl max-w-md w-full p-6">

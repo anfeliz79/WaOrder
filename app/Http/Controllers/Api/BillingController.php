@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\BankAccount;
+use App\Models\CardnetToken;
 use App\Models\Invoice;
+use App\Models\PaymentMethod;
 use App\Models\Plan;
 use App\Models\SubscriptionAddon;
+use App\Services\Payment\CardnetTokenizationService;
 use App\Services\Payment\PayPalService;
 use App\Services\Subscription\SubscriptionManager;
 use Illuminate\Http\Request;
@@ -65,12 +69,36 @@ class BillingController extends Controller
             ];
         }
 
+        // Payment methods available for switching
+        $availablePaymentMethods = [];
+        try {
+            $availablePaymentMethods = PaymentMethod::active()->get()->map(fn($m) => [
+                'slug' => $m->slug,
+                'name' => $m->name,
+            ])->values()->toArray();
+        } catch (\Throwable $e) {
+            // Table may not exist yet
+        }
+
+        $env = config('cardnet.environment', 'testing');
+        $checkoutScriptBase = $env === 'production'
+            ? 'https://servicios.cardnet.com.do/servicios/tokens/v1'
+            : 'https://labservicios.cardnet.com.do/servicios/tokens/v1';
+
+        $bankAccounts = BankAccount::where('is_active', true)
+            ->orderBy('created_at')
+            ->get(['id', 'bank_name', 'account_holder_name', 'account_number', 'account_type', 'currency', 'instructions']);
+
         return Inertia::render('Billing/Index', [
             'subscription' => $subscription,
             'paymentMethod' => $paymentMethodInfo,
             'invoices' => $invoices,
             'plans' => $plans,
             'usage' => $usage,
+            'availablePaymentMethods' => $availablePaymentMethods,
+            'publicKey' => config('cardnet.platform.public_key'),
+            'checkoutScriptBase' => $checkoutScriptBase,
+            'bankAccounts' => $bankAccounts,
         ]);
     }
 
@@ -110,8 +138,8 @@ class BillingController extends Controller
                     $newTotal,
                     $newPlan->currency ?? 'USD',
                     $subscription->billing_period ?? 'monthly',
-                    url("/billing/plan-change/paypal-approved?plan_id={$newPlan->id}"),
-                    url('/billing?plan_change_cancelled=1'),
+                    url("/billing/plan-change/paypal-approved?plan_id={$newPlan->id}&popup=1"),
+                    url("/billing/plan-change/paypal-approved?popup=1&cancelled=1"),
                 );
 
                 if ($result['requires_approval']) {
@@ -121,7 +149,9 @@ class BillingController extends Controller
                         3600
                     );
 
-                    return Inertia::location($result['approval_url']);
+                    return response()->json([
+                        'paypal_approval_url' => $result['approval_url'],
+                    ]);
                 }
             } catch (\Exception $e) {
                 Log::error('PayPal plan change revision failed', [
@@ -143,41 +173,57 @@ class BillingController extends Controller
     public function planChangePayPalCallback(Request $request)
     {
         $planId = $request->query('plan_id');
+        $isPopup = $request->boolean('popup');
         $newPlan = $planId ? Plan::find($planId) : null;
 
+        if ($request->boolean('cancelled')) {
+            return $isPopup
+                ? view('paypal-popup-close', ['success' => false, 'message' => 'Cambio de plan cancelado.'])
+                : redirect('/billing')->with('error', 'Cambio de plan cancelado.');
+        }
+
         if (!$newPlan) {
-            return redirect('/billing')->with('error', 'Plan no encontrado.');
+            return $isPopup
+                ? view('paypal-popup-close', ['success' => false, 'message' => 'Plan no encontrado.'])
+                : redirect('/billing')->with('error', 'Plan no encontrado.');
         }
 
         $tenant = app('tenant');
         $subscription = $tenant->subscription;
 
         if (!$subscription) {
-            return redirect('/billing')->with('error', 'Suscripcion no encontrada.');
+            return $isPopup
+                ? view('paypal-popup-close', ['success' => false, 'message' => 'Suscripcion no encontrada.'])
+                : redirect('/billing')->with('error', 'Suscripcion no encontrada.');
         }
 
-        // Clear cache
         Cache::pull("pending_plan_change_{$subscription->id}");
 
-        // Verify PayPal subscription is still active
         if ($subscription->paypal_subscription_id) {
             try {
                 $paypal = app(PayPalService::class);
                 $paypalSub = $paypal->getSubscription($subscription->paypal_subscription_id);
 
                 if (!in_array($paypalSub['status'] ?? '', ['ACTIVE', 'APPROVED'])) {
-                    return redirect('/billing')->with('error', 'La revision de PayPal no fue aprobada.');
+                    $errorMsg = 'La revision de PayPal no fue aprobada.';
+                    return $isPopup
+                        ? view('paypal-popup-close', ['success' => false, 'message' => $errorMsg])
+                        : redirect('/billing')->with('error', $errorMsg);
                 }
             } catch (\Exception $e) {
                 Log::error('PayPal plan change callback verification failed', ['error' => $e->getMessage()]);
-                return redirect('/billing')->with('error', 'Error verificando con PayPal.');
+                return $isPopup
+                    ? view('paypal-popup-close', ['success' => false, 'message' => 'Error verificando con PayPal.'])
+                    : redirect('/billing')->with('error', 'Error verificando con PayPal.');
             }
         }
 
-        // Apply the plan change
         $this->subscriptionManager->changePlan($subscription, $newPlan);
 
-        return redirect('/billing')->with('success', "Plan cambiado a {$newPlan->name} exitosamente.");
+        $successMsg = "Plan cambiado a {$newPlan->name} exitosamente.";
+        return $isPopup
+            ? view('paypal-popup-close', ['success' => true, 'message' => $successMsg])
+            : redirect('/billing')->with('success', $successMsg);
     }
 
     public function cancel(Request $request)
@@ -292,8 +338,8 @@ class BillingController extends Controller
                     $newTotal,
                     $subscription->plan->currency ?? 'USD',
                     $subscription->billing_period ?? 'monthly',
-                    url("/billing/addon/paypal-approved?addon_type={$addonType}"),
-                    url('/billing?addon_cancelled=1'),
+                    url("/billing/addon/paypal-approved?addon_type={$addonType}&popup=1"),
+                    url("/billing/addon/paypal-approved?addon_type={$addonType}&popup=1&cancelled=1"),
                 );
 
                 if ($result['requires_approval']) {
@@ -304,7 +350,9 @@ class BillingController extends Controller
                         3600
                     );
 
-                    return Inertia::location($result['approval_url']);
+                    return response()->json([
+                        'paypal_approval_url' => $result['approval_url'],
+                    ]);
                 }
             } catch (\Exception $e) {
                 Log::error('PayPal addon revision failed', [
@@ -384,16 +432,27 @@ class BillingController extends Controller
     public function addonPayPalCallback(Request $request)
     {
         $addonType = $request->query('addon_type');
+        $isPopup = $request->boolean('popup');
+
+        if ($request->boolean('cancelled')) {
+            return $isPopup
+                ? view('paypal-popup-close', ['success' => false, 'message' => 'Activacion de addon cancelada.'])
+                : redirect('/billing')->with('error', 'Activacion de addon cancelada.');
+        }
 
         if (!$addonType || !in_array($addonType, ['support', 'delivery_app'])) {
-            return redirect('/billing')->with('error', 'Addon no valido.');
+            return $isPopup
+                ? view('paypal-popup-close', ['success' => false, 'message' => 'Addon no valido.'])
+                : redirect('/billing')->with('error', 'Addon no valido.');
         }
 
         $tenant = app('tenant');
         $subscription = $tenant->subscription;
 
         if (!$subscription) {
-            return redirect('/billing')->with('error', 'Suscripcion no encontrada.');
+            return $isPopup
+                ? view('paypal-popup-close', ['success' => false, 'message' => 'Suscripcion no encontrada.'])
+                : redirect('/billing')->with('error', 'Suscripcion no encontrada.');
         }
 
         // Pull pending addon from cache
@@ -401,7 +460,6 @@ class BillingController extends Controller
         $price = $pending['price'] ?? 0;
 
         if (!$price) {
-            // Fallback: get price from plan
             $plan = $subscription->plan;
             $price = (float) match ($addonType) {
                 'support' => $plan->support_addon_price,
@@ -417,11 +475,16 @@ class BillingController extends Controller
                 $paypalSub = $paypal->getSubscription($subscription->paypal_subscription_id);
 
                 if (!in_array($paypalSub['status'] ?? '', ['ACTIVE', 'APPROVED'])) {
-                    return redirect('/billing')->with('error', 'La revision de PayPal no fue aprobada.');
+                    $errorMsg = 'La revision de PayPal no fue aprobada.';
+                    return $isPopup
+                        ? view('paypal-popup-close', ['success' => false, 'message' => $errorMsg])
+                        : redirect('/billing')->with('error', $errorMsg);
                 }
             } catch (\Exception $e) {
                 Log::error('PayPal addon callback verification failed', ['error' => $e->getMessage()]);
-                return redirect('/billing')->with('error', 'Error verificando con PayPal.');
+                return $isPopup
+                    ? view('paypal-popup-close', ['success' => false, 'message' => 'Error verificando con PayPal.'])
+                    : redirect('/billing')->with('error', 'Error verificando con PayPal.');
             }
         }
 
@@ -447,7 +510,169 @@ class BillingController extends Controller
             'metadata' => ['paypal_subscription_id' => $subscription->paypal_subscription_id],
         ]);
 
-        return redirect('/billing')->with('success', $this->addonLabel($addonType) . ' activado exitosamente.');
+        $successMsg = $this->addonLabel($addonType) . ' activado exitosamente.';
+        return $isPopup
+            ? view('paypal-popup-close', ['success' => true, 'message' => $successMsg])
+            : redirect('/billing')->with('success', $successMsg);
+    }
+
+    /**
+     * Switch payment method to bank_transfer (no tokenization needed).
+     */
+    public function switchToBankTransfer()
+    {
+        $tenant = app('tenant');
+        $subscription = $tenant->subscription;
+
+        if (!$subscription || !$subscription->isActive()) {
+            return back()->with('error', 'Necesitas una suscripcion activa.');
+        }
+
+        $subscription->update(['payment_method' => 'bank_transfer']);
+
+        return back()->with('success', 'Metodo de pago cambiado a transferencia bancaria.');
+    }
+
+    /**
+     * Switch to Cardnet by tokenizing a new card.
+     */
+    public function tokenizeCard(Request $request, CardnetTokenizationService $tokenization)
+    {
+        $request->validate([
+            'token_id'     => 'required|string',
+            'brand'        => 'nullable|string|max:30',
+            'last4'        => 'nullable|string|max:4',
+            'expiry_month' => 'nullable|string|max:2',
+            'expiry_year'  => 'nullable|string|max:4',
+        ]);
+
+        $tenant = app('tenant');
+        $subscription = $tenant->subscription;
+
+        if (!$subscription || !$subscription->isActive()) {
+            return response()->json(['success' => false, 'message' => 'Necesitas una suscripcion activa.'], 422);
+        }
+
+        // Ensure Cardnet customer exists
+        $customerId = $tenant->getSetting('cardnet_customer_id');
+        if (!$customerId) {
+            $customerId = $tokenization->createCustomer($tenant);
+            if ($customerId) {
+                $settings = $tenant->settings ?? [];
+                $settings['cardnet_customer_id'] = $customerId;
+                $tenant->update(['settings' => $settings]);
+            }
+        }
+
+        // Deactivate prior tokens
+        CardnetToken::where('tenant_id', $tenant->id)
+            ->update(['is_default' => false, 'is_active' => false]);
+
+        $expiry = null;
+        if ($request->expiry_month && $request->expiry_year) {
+            $expiry = $request->expiry_month . '/' . substr($request->expiry_year, -2);
+        }
+
+        CardnetToken::create([
+            'tenant_id'           => $tenant->id,
+            'cardnet_customer_id' => $customerId ?? '',
+            'trx_token'           => $request->token_id,
+            'card_brand'          => $request->brand,
+            'card_last_four'      => $request->last4,
+            'card_expiry'         => $expiry,
+            'is_default'          => true,
+            'is_active'           => true,
+        ]);
+
+        $subscription->update([
+            'payment_method' => 'cardnet',
+            'paypal_subscription_id' => null,
+        ]);
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Create a PayPal subscription for switching payment method.
+     */
+    public function switchToPayPal(PayPalService $paypal)
+    {
+        $tenant = app('tenant');
+        $subscription = $tenant->subscription;
+
+        if (!$subscription || !$subscription->isActive()) {
+            return response()->json(['error' => 'Necesitas una suscripcion activa.'], 400);
+        }
+
+        $plan = $subscription->plan;
+
+        // Calculate total including addons
+        $addonTotal = $subscription->addons()->where('is_active', true)->sum('price');
+        $total = (float) $subscription->price + $addonTotal;
+
+        try {
+            $result = $paypal->createSubscription(
+                $plan,
+                $subscription,
+                url('/billing/payment-method/paypal/callback?popup=1'),
+                url('/billing/payment-method/paypal/callback?popup=1&cancelled=1'),
+            );
+
+            return response()->json(['approval_url' => $result['approval_url']]);
+        } catch (\Exception $e) {
+            Log::error('PayPal payment method switch failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * PayPal callback after switching payment method.
+     */
+    public function payPalPaymentMethodCallback(Request $request, PayPalService $paypal)
+    {
+        $paypalSubscriptionId = $request->query('subscription_id');
+        $isPopup = $request->boolean('popup');
+
+        if (!$paypalSubscriptionId) {
+            return $isPopup
+                ? view('paypal-popup-close', ['success' => false, 'message' => 'Suscripcion de PayPal no encontrada.'])
+                : redirect('/billing')->with('error', 'Suscripcion de PayPal no encontrada.');
+        }
+
+        $tenant = app('tenant');
+        $subscription = $tenant->subscription;
+
+        if (!$subscription) {
+            return $isPopup
+                ? view('paypal-popup-close', ['success' => false, 'message' => 'Suscripcion no encontrada.'])
+                : redirect('/billing')->with('error', 'Suscripcion no encontrada.');
+        }
+
+        try {
+            $paypalSub = $paypal->getSubscription($paypalSubscriptionId);
+            $status = $paypalSub['status'] ?? '';
+
+            if ($status === 'ACTIVE') {
+                $subscription->update([
+                    'payment_method' => 'paypal',
+                    'paypal_subscription_id' => $paypalSubscriptionId,
+                ]);
+
+                return $isPopup
+                    ? view('paypal-popup-close', ['success' => true, 'message' => 'Metodo de pago cambiado a PayPal.'])
+                    : redirect('/billing')->with('success', 'Metodo de pago cambiado a PayPal.');
+            }
+
+            $errorMsg = 'La suscripcion de PayPal no fue activada. Intenta de nuevo.';
+            return $isPopup
+                ? view('paypal-popup-close', ['success' => false, 'message' => $errorMsg])
+                : redirect('/billing')->with('error', $errorMsg);
+        } catch (\Exception $e) {
+            Log::error('PayPal payment method callback failed', ['error' => $e->getMessage()]);
+            return $isPopup
+                ? view('paypal-popup-close', ['success' => false, 'message' => 'Error verificando PayPal.'])
+                : redirect('/billing')->with('error', 'Error verificando PayPal.');
+        }
     }
 
     private function deactivateIncompatibleAddons($subscription, Plan $newPlan): void

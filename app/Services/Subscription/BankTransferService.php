@@ -74,8 +74,11 @@ class BankTransferService
         // Activate subscription for one billing period
         $subscription->update([
             'status'               => 'active',
+            'payment_method'       => 'bank_transfer',
             'current_period_start' => now(),
-            'current_period_end'   => now()->addMonth(),
+            'current_period_end'   => $subscription->billing_period === 'annual'
+                ? now()->addYear()
+                : now()->addMonth(),
         ]);
 
         // Create a paid invoice for this transfer
