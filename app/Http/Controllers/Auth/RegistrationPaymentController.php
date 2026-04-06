@@ -71,6 +71,8 @@ class RegistrationPaymentController extends Controller
 
         return Inertia::render('Auth/RegisterPayment', [
             'plan'               => $subscription->load('plan')->plan,
+            'billing_period'     => $subscription->billing_period,
+            'subscription_price' => (float) $subscription->price,
             'publicKey'          => config('cardnet.platform.public_key'),
             'checkoutScriptBase' => $checkoutScriptBase,
             'bankAccounts'       => $bankAccounts,

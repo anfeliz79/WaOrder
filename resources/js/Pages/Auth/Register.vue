@@ -18,10 +18,33 @@ const form = useForm({
     password: '',
     password_confirmation: '',
     plan_slug: props.selectedPlan || (props.plans[0]?.slug ?? 'free'),
+    billing_period: 'monthly',
 })
 
 const selectedPlanData = computed(() => {
     return props.plans.find(p => p.slug === form.plan_slug)
+})
+
+const selectedPrice = computed(() => {
+    const plan = selectedPlanData.value
+    if (!plan) return 0
+    if (form.billing_period === 'annual' && parseFloat(plan.price_annual) > 0) {
+        return parseFloat(plan.price_annual)
+    }
+    return parseFloat(plan.price_monthly)
+})
+
+const hasAnnualPrice = computed(() => {
+    const plan = selectedPlanData.value
+    return plan && parseFloat(plan.price_annual) > 0
+})
+
+const annualSavings = computed(() => {
+    const plan = selectedPlanData.value
+    if (!plan || !parseFloat(plan.price_annual) || !parseFloat(plan.price_monthly)) return 0
+    const monthlyTotal = parseFloat(plan.price_monthly) * 12
+    const annualTotal = parseFloat(plan.price_annual)
+    return Math.round(((monthlyTotal - annualTotal) / monthlyTotal) * 100)
 })
 
 const canProceedStep1 = computed(() => {
@@ -149,6 +172,31 @@ const formatLimit = (value, singular, plural) => {
                         </div>
                     </div>
 
+                    <!-- Billing period toggle -->
+                    <div class="flex items-center justify-center mb-6">
+                        <div class="inline-flex items-center bg-gray-100 rounded-xl p-1">
+                            <button type="button" @click="form.billing_period = 'monthly'"
+                                :class="[
+                                    'px-4 py-2 text-sm font-medium rounded-lg transition-all',
+                                    form.billing_period === 'monthly'
+                                        ? 'bg-white text-gray-900 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                ]">
+                                Mensual
+                            </button>
+                            <button type="button" @click="form.billing_period = 'annual'"
+                                :class="[
+                                    'px-4 py-2 text-sm font-medium rounded-lg transition-all',
+                                    form.billing_period === 'annual'
+                                        ? 'bg-white text-gray-900 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                ]">
+                                Anual
+                                <span v-if="annualSavings > 0" class="ml-1 text-xs text-green-600 font-semibold">-{{ annualSavings }}%</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="space-y-3">
                         <label v-for="plan in plans" :key="plan.slug"
                             :class="[
@@ -175,8 +223,15 @@ const formatLimit = (value, singular, plural) => {
                                     </div>
                                 </div>
                                 <div class="text-right shrink-0 ml-4">
-                                    <span class="text-xl font-bold text-gray-900">{{ formatPrice(plan.price_monthly, plan.currency) }}</span>
-                                    <span v-if="parseFloat(plan.price_monthly) > 0" class="text-xs text-gray-500">/mes</span>
+                                    <template v-if="form.billing_period === 'annual' && parseFloat(plan.price_annual) > 0">
+                                        <span class="text-xl font-bold text-gray-900">{{ formatPrice(plan.price_annual, plan.currency) }}</span>
+                                        <span class="text-xs text-gray-500">/anual</span>
+                                        <div class="text-xs text-gray-400 line-through">{{ formatPrice(parseFloat(plan.price_monthly) * 12, plan.currency) }}</div>
+                                    </template>
+                                    <template v-else>
+                                        <span class="text-xl font-bold text-gray-900">{{ formatPrice(plan.price_monthly, plan.currency) }}</span>
+                                        <span v-if="parseFloat(plan.price_monthly) > 0" class="text-xs text-gray-500">/mes</span>
+                                    </template>
                                 </div>
                             </div>
                             <div class="mt-2 flex items-center gap-1.5" v-if="form.plan_slug === plan.slug">
@@ -227,18 +282,31 @@ const formatLimit = (value, singular, plural) => {
                                 <span class="font-semibold text-[#0052FF]">{{ selectedPlanData?.name }}</span>
                             </div>
                             <div class="flex justify-between text-sm">
+                                <span class="text-gray-500">Modalidad</span>
+                                <span class="font-medium text-gray-900">{{ form.billing_period === 'annual' ? 'Anual' : 'Mensual' }}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
                                 <span class="text-gray-500">Precio</span>
-                                <span class="font-medium text-gray-900">{{ formatPrice(selectedPlanData?.price_monthly, selectedPlanData?.currency) }}/mes</span>
+                                <span class="font-medium text-gray-900">
+                                    {{ formatPrice(selectedPrice, selectedPlanData?.currency) }}{{ form.billing_period === 'annual' ? '/anual' : '/mes' }}
+                                </span>
                             </div>
                         </div>
 
                         <!-- Free plan notice -->
-                        <div v-if="selectedPlanData && parseFloat(selectedPlanData.price_monthly) === 0" class="bg-green-50 border border-green-100 rounded-xl p-4">
+                        <div v-if="selectedPlanData && selectedPrice === 0" class="bg-green-50 border border-green-100 rounded-xl p-4">
                             <p class="text-sm text-green-800 font-medium">
                                 Plan gratuito — sin cobros
                             </p>
                             <p class="text-sm text-green-600 mt-1">
                                 Puedes actualizar a un plan superior en cualquier momento.
+                            </p>
+                        </div>
+
+                        <!-- Annual savings notice -->
+                        <div v-else-if="form.billing_period === 'annual' && annualSavings > 0" class="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                            <p class="text-sm text-blue-800 font-medium">
+                                Ahorras {{ annualSavings }}% con el plan anual
                             </p>
                         </div>
                     </div>

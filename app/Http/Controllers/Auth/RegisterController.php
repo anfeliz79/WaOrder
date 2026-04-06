@@ -36,6 +36,7 @@ class RegisterController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'plan_slug' => ['required', 'string', 'exists:plans,slug'],
+            'billing_period' => ['required', 'in:monthly,annual'],
         ], [
             'restaurant_name.required' => 'El nombre del restaurante es requerido.',
             'name.required' => 'Tu nombre es requerido.',
@@ -46,8 +47,10 @@ class RegisterController extends Controller
         ]);
 
         $plan = Plan::where('slug', $validated['plan_slug'])->firstOrFail();
+        $billingPeriod = $validated['billing_period'];
+        $price = $plan->getPriceForPeriod($billingPeriod);
 
-        return DB::transaction(function () use ($validated, $plan, $request) {
+        return DB::transaction(function () use ($validated, $plan, $billingPeriod, $price, $request) {
             // Generate unique slug
             $slug = Str::slug($validated['restaurant_name']);
             $baseSlug = $slug;
@@ -61,10 +64,10 @@ class RegisterController extends Controller
                 'name' => $validated['restaurant_name'],
                 'slug' => $slug,
                 'timezone' => 'America/Santo_Domingo',
-                'currency' => 'DOP',
+                'currency' => $plan->currency ?? 'DOP',
                 'locale' => 'es',
                 'plan_id' => $plan->id,
-                'subscription_plan' => $plan->slug, // backward compat
+                'subscription_plan' => $plan->slug,
                 'is_active' => true,
                 'settings' => [
                     'setup_completed' => false,
@@ -73,26 +76,29 @@ class RegisterController extends Controller
                 ],
             ]);
 
-            // Create admin user
+            // Create admin user (password cast as 'hashed' on User model — no manual Hash::make)
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
+                'password' => $validated['password'],
                 'role' => 'admin',
                 'tenant_id' => $tenant->id,
             ]);
 
             // Create subscription
             $isFreePlan = $plan->isFree();
+            $periodEnd = $isFreePlan
+                ? now()->addYear()
+                : ($billingPeriod === 'annual' ? now()->addYear() : now()->addMonth());
 
             Subscription::create([
                 'tenant_id' => $tenant->id,
                 'plan_id' => $plan->id,
                 'status' => $isFreePlan ? 'active' : 'pending_payment',
-                'billing_period' => 'monthly',
-                'price' => $plan->price_monthly,
+                'billing_period' => $billingPeriod,
+                'price' => $price,
                 'current_period_start' => now(),
-                'current_period_end' => $isFreePlan ? now()->addYear() : now()->addMonth(),
+                'current_period_end' => $periodEnd,
             ]);
 
             // Login

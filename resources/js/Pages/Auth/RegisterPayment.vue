@@ -10,6 +10,8 @@ import axios from 'axios'
 
 const props = defineProps({
     plan: Object,
+    billing_period: { type: String, default: 'monthly' },
+    subscription_price: { type: Number, default: 0 },
     publicKey: String,
     checkoutScriptBase: String,
     bankAccounts: { type: Array, default: () => [] },
@@ -76,10 +78,13 @@ const paypalError = ref(null)
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const planPrice = computed(() => {
-    const price    = parseFloat(props.plan?.price_monthly || 0)
+    const price    = props.subscription_price || parseFloat(props.plan?.price_monthly || 0)
     const currency = props.plan?.currency || 'DOP'
     return new Intl.NumberFormat('es-DO', { style: 'currency', currency, maximumFractionDigits: 2 }).format(price)
 })
+
+const billingLabel = computed(() => props.billing_period === 'annual' ? 'anual' : 'mes')
+const billingLabelFull = computed(() => props.billing_period === 'annual' ? 'Facturacion anual' : 'Facturacion mensual')
 
 const formatPrice = (price) => {
     if (!price || parseFloat(price) === 0) return 'Gratis'
@@ -137,14 +142,15 @@ const initCheckout = () => {
         cardError.value = 'Error al inicializar el modulo de pago.'
         return
     }
+    const amount = props.subscription_price || parseFloat(props.plan?.price_monthly || 0)
     window.PWCheckout.SetProperties({
         name: 'WaOrder',
-        button_label: `Pagar ${planPrice.value}/mes`,
+        button_label: `Pagar ${planPrice.value}/${billingLabel.value}`,
         currency: props.plan?.currency || 'DOP',
-        amount: String(parseFloat(props.plan?.price_monthly || 0).toFixed(2)),
+        amount: String(amount.toFixed(2)),
         form_id: 'cardnet-form',
         lang: 'ESP',
-        description: `Suscripcion ${props.plan?.name}`,
+        description: `Suscripcion ${props.plan?.name} (${billingLabelFull.value})`,
     })
     window.PWCheckout.AddActionButton('cardnet-pay-btn')
     window.PWCheckout.Bind('tokenCreated', handleTokenCreated)
@@ -317,9 +323,9 @@ const startPayPalSubscription = async () => {
                     <div class="flex justify-between items-center">
                         <div>
                             <p class="text-sm font-semibold text-[#002F94]">Plan {{ plan?.name }}</p>
-                            <p class="text-xs text-[#0052FF] mt-0.5">Facturacion mensual</p>
+                            <p class="text-xs text-[#0052FF] mt-0.5">{{ billingLabelFull }}</p>
                         </div>
-                        <p class="text-xl font-bold text-[#0047DB]">{{ planPrice }}<span class="text-sm font-normal">/mes</span></p>
+                        <p class="text-xl font-bold text-[#0047DB]">{{ planPrice }}<span class="text-sm font-normal">/{{ billingLabel }}</span></p>
                     </div>
                 </div>
 
@@ -517,8 +523,8 @@ const startPayPalSubscription = async () => {
                             <h3 class="text-lg font-semibold text-gray-900">Pagar con PayPal</h3>
                             <p class="text-gray-500 mt-1">Seras redirigido a PayPal para completar tu suscripcion</p>
                             <div class="mt-4 bg-gray-50 rounded-xl p-4 inline-block">
-                                <p class="text-sm text-gray-600">Plan: <strong>{{ plan?.name }}</strong></p>
-                                <p class="text-2xl font-bold text-gray-900 mt-1">{{ formatPrice(plan?.price_monthly) }}<span class="text-sm font-normal text-gray-500">/mes</span></p>
+                                <p class="text-sm text-gray-600">Plan: <strong>{{ plan?.name }}</strong> ({{ billingLabelFull }})</p>
+                                <p class="text-2xl font-bold text-gray-900 mt-1">{{ planPrice }}<span class="text-sm font-normal text-gray-500">/{{ billingLabel }}</span></p>
                             </div>
                         </div>
                         <button
