@@ -3,6 +3,7 @@
 namespace App\Services\Conversation;
 
 use App\Models\ChatSession;
+use App\Models\Customer;
 use App\Services\Conversation\Handlers\CartReviewHandler;
 use App\Services\Conversation\Handlers\CollectingInfoHandler;
 use App\Services\Conversation\Handlers\ConfirmationHandler;
@@ -39,6 +40,18 @@ class ConversationEngine
 
     public function process(ChatSession $session, string $message, string $messageType = 'text'): array
     {
+        // Check if customer is blocked before any processing
+        $blockedResponse = $this->checkBlockedCustomer($session);
+        if ($blockedResponse) {
+            return $blockedResponse;
+        }
+
+        // Check if bot is manually paused
+        $pausedResponse = $this->checkBotPaused();
+        if ($pausedResponse) {
+            return $pausedResponse;
+        }
+
         // Check business hours before processing
         $closedResponse = $this->checkBusinessHours($session);
         if ($closedResponse) {
@@ -199,6 +212,51 @@ class ConversationEngine
 
             return $errorResult;
         }
+    }
+
+    private function checkBlockedCustomer(ChatSession $session): ?array
+    {
+        $customer = $session->customer
+            ?? Customer::where('tenant_id', $session->tenant_id)
+                ->where('phone', $session->customer_phone)
+                ->first();
+
+        if ($customer && $customer->is_blocked) {
+            Log::info('Blocked customer attempted contact', [
+                'customer_id' => $customer->id,
+                'phone' => $session->customer_phone,
+                'tenant_id' => $session->tenant_id,
+            ]);
+
+            return [
+                'response' => "Lo sentimos, tu cuenta ha sido suspendida. Si crees que esto es un error, contacta al restaurante directamente.",
+                'response_type' => 'text',
+                'ai_used' => false,
+            ];
+        }
+
+        return null;
+    }
+
+    private function checkBotPaused(): ?array
+    {
+        $tenant = app('tenant');
+        if (!$tenant) return null;
+
+        $isPaused = (bool) ($tenant->settings['bot_paused'] ?? false);
+        if (!$isPaused) return null;
+
+        $restaurantName = $tenant->name ?? 'el restaurante';
+        $customMessage = $tenant->getSetting('bot_paused_message');
+
+        $message = $customMessage
+            ?: "Hola! Gracias por escribir a {$restaurantName}.\n\nEn este momento no estamos recibiendo pedidos. Vuelve pronto!";
+
+        return [
+            'response' => $message,
+            'response_type' => 'text',
+            'ai_used' => false,
+        ];
     }
 
     private function checkBusinessHours(ChatSession $session): ?array

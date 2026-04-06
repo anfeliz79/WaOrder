@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\AI\AiService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -159,6 +160,8 @@ class SettingsController extends Controller
         $tenant->update($data);
         $tenant->save(); // ensures encrypted ai_api_key is persisted
 
+        Cache::forget('setup_alerts_' . $tenant->id);
+
         return back()->with('success', 'Configuracion actualizada');
     }
 
@@ -266,6 +269,48 @@ class SettingsController extends Controller
         }
 
         return response()->json(['success' => false, 'message' => 'La API no respondió. Verifica la clave.']);
+    }
+
+    public function sendTestMessage(Request $request)
+    {
+        $data = $request->validate([
+            'phone_number' => 'required|string|max:20',
+        ]);
+
+        $tenant = app('tenant');
+
+        if (!$tenant->whatsapp_phone_number_id || !$tenant->whatsapp_access_token) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Configura las credenciales de WhatsApp primero.',
+            ]);
+        }
+
+        try {
+            $client = app(\App\Services\WhatsApp\WhatsAppClient::class);
+            $result = $client->sendTextMessage(
+                $tenant,
+                $data['phone_number'],
+                "✅ *Mensaje de prueba de {$tenant->name}*\n\nTu bot de WhatsApp está funcionando correctamente. 🎉"
+            );
+
+            if ($result) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Mensaje enviado a {$data['phone_number']}",
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'No se pudo enviar el mensaje. Verifica que el número sea válido y tenga WhatsApp.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al enviar: ' . $e->getMessage(),
+            ]);
+        }
     }
 
     public function testWhatsApp(Request $request)

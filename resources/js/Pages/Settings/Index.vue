@@ -45,6 +45,29 @@ const hasExistingAppSecret = ref(!!props.hasWhatsAppAppSecret);
 const testResult = ref(null);
 const testing = ref(false);
 
+// Test message state
+const testPhone = ref('');
+const testMessageResult = ref(null);
+const sendingTestMessage = ref(false);
+
+const sendTestMessage = async () => {
+    if (!testPhone.value.trim()) return;
+    sendingTestMessage.value = true;
+    testMessageResult.value = null;
+    try {
+        const response = await fetch('/settings/test-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ phone_number: testPhone.value.trim() }),
+        });
+        testMessageResult.value = await response.json();
+    } catch (e) {
+        testMessageResult.value = { success: false, message: 'Error de red: ' + e.message };
+    } finally {
+        sendingTestMessage.value = false;
+    }
+};
+
 const menuForm = useForm({
     settings: {
         menu_source: props.tenant?.settings?.menu_source || 'internal',
@@ -877,6 +900,58 @@ const previewName = computed(() => props.tenant?.name || 'Mi Restaurante');
                                 <p v-if="testResult.details.quality"><span class="font-medium">Calidad:</span> {{ testResult.details.quality }}</p>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enviar Mensaje de Prueba -->
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <h2 class="text-lg font-semibold mb-2">Enviar Mensaje de Prueba</h2>
+                <p class="text-sm text-gray-500 mb-4">Ingresa un numero de WhatsApp para recibir un mensaje de prueba del bot.</p>
+
+                <div class="flex gap-3 items-start">
+                    <div class="flex-1">
+                        <input v-model="testPhone" type="text" placeholder="+18091234567"
+                               class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                               @keyup.enter="sendTestMessage" />
+                        <p class="text-xs text-gray-400 mt-1">Incluye el codigo de pais, ej: +1809XXXXXXX</p>
+                    </div>
+                    <button @click="sendTestMessage" :disabled="sendingTestMessage || !testPhone.trim()"
+                            class="bg-primary-600 text-white px-5 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50 whitespace-nowrap text-sm">
+                        {{ sendingTestMessage ? 'Enviando...' : 'Enviar prueba' }}
+                    </button>
+                </div>
+
+                <div v-if="testMessageResult" class="mt-4 rounded-lg p-4"
+                     :class="testMessageResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'">
+                    <div class="flex items-start gap-2">
+                        <span :class="testMessageResult.success ? 'text-green-600' : 'text-red-600'" class="text-lg leading-none">
+                            {{ testMessageResult.success ? '&#10003;' : '&#10007;' }}
+                        </span>
+                        <p :class="testMessageResult.success ? 'text-green-800' : 'text-red-800'" class="text-sm font-medium">
+                            {{ testMessageResult.message }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Simular Conversacion -->
+            <div class="bg-blue-50 rounded-xl border border-blue-200 p-6">
+                <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-blue-900 mb-1">Probar una conversacion completa</h3>
+                        <p class="text-sm text-blue-700">
+                            Para probar el flujo completo del bot (ver menu, hacer un pedido, etc.), envia un mensaje de WhatsApp
+                            <span v-if="testResult?.details?.phone" class="font-medium">al numero {{ testResult.details.phone }}</span>
+                            <span v-else>al numero de telefono configurado en tu cuenta de WhatsApp Business</span>
+                            desde cualquier telefono.
+                        </p>
+                        <p class="text-xs text-blue-500 mt-2">El bot respondera automaticamente si el webhook esta configurado correctamente y el queue worker esta activo.</p>
                     </div>
                 </div>
             </div>
