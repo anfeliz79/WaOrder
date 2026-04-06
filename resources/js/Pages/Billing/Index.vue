@@ -5,7 +5,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue'
 import {
     CreditCard, ArrowUpRight, X, Check, AlertTriangle, Clock,
     Store, UtensilsCrossed, Truck, Users, ShoppingBag,
-    Wallet, Building2
+    Wallet, Building2, Headphones, Smartphone, Loader2
 } from 'lucide-vue-next'
 
 defineOptions({ layout: AdminLayout })
@@ -23,9 +23,49 @@ const showChangePlanModal = ref(false)
 const showCancelModal = ref(false)
 const cancelReason = ref('')
 const selectedPlanId = ref(null)
+const togglingAddon = ref(null)
+const changingPlan = ref(false)
+const cancelling = ref(false)
 
 const plan = computed(() => props.subscription?.plan)
 const limits = computed(() => plan.value || {})
+
+const availableAddons = computed(() => {
+    if (!plan.value) return []
+    const addons = []
+    if (plan.value.support_addon_available) {
+        addons.push({
+            type: 'support',
+            label: 'Soporte Premium',
+            description: 'Soporte tecnico prioritario con tiempo de respuesta garantizado',
+            icon: Headphones,
+            price: parseFloat(plan.value.support_addon_price) || 0,
+            isActive: props.subscription?.addons?.some(a => a.addon_type === 'support' && a.is_active) || false,
+        })
+    }
+    if (plan.value.delivery_app_addon_available) {
+        addons.push({
+            type: 'delivery_app',
+            label: 'App de Delivery',
+            description: 'Aplicacion movil para tus mensajeros con tracking en tiempo real',
+            icon: Smartphone,
+            price: parseFloat(plan.value.delivery_app_addon_price) || 0,
+            isActive: props.subscription?.addons?.some(a => a.addon_type === 'delivery_app' && a.is_active) || false,
+        })
+    }
+    return addons
+})
+
+const toggleAddon = (addonType, currentlyActive) => {
+    togglingAddon.value = addonType
+    router.post('/billing/addon/toggle', {
+        addon_type: addonType,
+        action: currentlyActive ? 'deactivate' : 'activate',
+    }, {
+        preserveScroll: true,
+        onFinish: () => { togglingAddon.value = null },
+    })
+}
 
 const statusBadge = computed(() => {
     const map = {
@@ -54,19 +94,26 @@ const usagePercent = (current, max) => {
 }
 
 const changePlan = () => {
-    if (!selectedPlanId.value) return
+    if (!selectedPlanId.value || changingPlan.value) return
+    changingPlan.value = true
     router.post('/billing/change-plan', { plan_id: selectedPlanId.value }, {
         preserveScroll: true,
         onSuccess: () => { showChangePlanModal.value = false },
+        onFinish: () => { changingPlan.value = false },
     })
 }
 
 const cancelSubscription = () => {
+    if (cancelling.value) return
+    cancelling.value = true
     router.post('/billing/cancel', { reason: cancelReason.value }, {
         preserveScroll: true,
         onSuccess: () => { showCancelModal.value = false; cancelReason.value = '' },
+        onFinish: () => { cancelling.value = false },
     })
 }
+
+const isPayPal = computed(() => props.paymentMethod?.type === 'paypal')
 
 const reactivate = () => {
     router.post('/billing/reactivate', {}, { preserveScroll: true })
@@ -159,6 +206,52 @@ const invoiceStatusBadge = (status) => {
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Addons -->
+                <div v-if="availableAddons.length" class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Addons</h2>
+                    <div class="space-y-3">
+                        <div v-for="addon in availableAddons" :key="addon.type"
+                            :class="[
+                                'flex items-center justify-between p-4 rounded-xl border transition-all',
+                                addon.isActive ? 'border-[#0052FF]/30 bg-blue-50/50' : 'border-gray-200 bg-white'
+                            ]">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div :class="[
+                                    'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
+                                    addon.isActive ? 'bg-[#0052FF]/10' : 'bg-gray-100'
+                                ]">
+                                    <component :is="addon.icon" :class="['w-5 h-5', addon.isActive ? 'text-[#0052FF]' : 'text-gray-400']" />
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm font-semibold text-gray-900">{{ addon.label }}</span>
+                                        <span v-if="addon.isActive" class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-green-100 text-green-700">ACTIVO</span>
+                                    </div>
+                                    <p class="text-xs text-gray-500 truncate">{{ addon.description }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 shrink-0 ml-3">
+                                <span class="text-sm font-bold text-gray-900">{{ formatPrice(addon.price) }}/mes</span>
+                                <button @click="toggleAddon(addon.type, addon.isActive)"
+                                    :disabled="togglingAddon === addon.type || !subscription?.status || !['active', 'trialing'].includes(subscription.status)"
+                                    :class="[
+                                        'px-3 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap',
+                                        addon.isActive
+                                            ? 'text-red-600 bg-red-50 hover:bg-red-100'
+                                            : 'text-white bg-[#0052FF] hover:bg-[#0047DB]',
+                                        (togglingAddon === addon.type) && 'opacity-60 cursor-wait'
+                                    ]">
+                                    <Loader2 v-if="togglingAddon === addon.type" class="w-3.5 h-3.5 animate-spin" />
+                                    <template v-else>{{ addon.isActive ? 'Desactivar' : 'Activar' }}</template>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <p v-if="subscription?.payment_method === 'paypal'" class="mt-3 text-xs text-gray-400">
+                        Activar un addon redirige a PayPal para aprobar el ajuste en tu suscripcion.
+                    </p>
                 </div>
 
                 <!-- Invoice History -->
@@ -270,11 +363,18 @@ const invoiceStatusBadge = (status) => {
                         </div>
                     </label>
                 </div>
-                <div class="mt-6 flex justify-end gap-3">
+                <p v-if="isPayPal" class="mt-4 text-xs text-gray-400">
+                    Si el nuevo plan tiene un precio mayor, seras redirigido a PayPal para aprobar el cambio.
+                </p>
+                <div class="mt-4 flex justify-end gap-3">
                     <button @click="showChangePlanModal = false" class="px-4 py-2 text-sm text-gray-600">Cancelar</button>
-                    <button @click="changePlan" :disabled="!selectedPlanId || selectedPlanId === subscription?.plan?.id"
-                        class="px-6 py-2 text-sm font-medium text-white bg-[#0052FF] rounded-lg hover:bg-[#0047DB] disabled:opacity-40 transition-colors">
-                        Confirmar Cambio
+                    <button @click="changePlan" :disabled="!selectedPlanId || selectedPlanId === subscription?.plan?.id || changingPlan"
+                        :class="[
+                            'px-6 py-2 text-sm font-medium text-white bg-[#0052FF] rounded-lg hover:bg-[#0047DB] disabled:opacity-40 transition-colors',
+                            changingPlan && 'cursor-wait'
+                        ]">
+                        <Loader2 v-if="changingPlan" class="w-4 h-4 animate-spin inline mr-1" />
+                        {{ changingPlan ? 'Procesando...' : 'Confirmar Cambio' }}
                     </button>
                 </div>
             </div>
@@ -297,9 +397,13 @@ const invoiceStatusBadge = (status) => {
                     class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 mb-4"></textarea>
                 <div class="flex justify-end gap-3">
                     <button @click="showCancelModal = false" class="px-4 py-2 text-sm text-gray-600">No cancelar</button>
-                    <button @click="cancelSubscription"
-                        class="px-6 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
-                        Confirmar Cancelacion
+                    <button @click="cancelSubscription" :disabled="cancelling"
+                        :class="[
+                            'px-6 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors',
+                            cancelling && 'opacity-60 cursor-wait'
+                        ]">
+                        <Loader2 v-if="cancelling" class="w-4 h-4 animate-spin inline mr-1" />
+                        {{ cancelling ? 'Cancelando...' : 'Confirmar Cancelacion' }}
                     </button>
                 </div>
             </div>

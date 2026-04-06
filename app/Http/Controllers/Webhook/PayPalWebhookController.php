@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Webhook;
 
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
+use App\Models\Plan;
 use App\Models\Subscription;
+use App\Models\SubscriptionAddon;
 use App\Services\Payment\PayPalService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class PayPalWebhookController extends Controller
@@ -32,6 +35,7 @@ class PayPalWebhookController extends Controller
             'BILLING.SUBSCRIPTION.ACTIVATED' => $this->handleActivated($resource),
             'BILLING.SUBSCRIPTION.CANCELLED' => $this->handleCancelled($resource),
             'BILLING.SUBSCRIPTION.SUSPENDED' => $this->handleSuspended($resource),
+            'BILLING.SUBSCRIPTION.UPDATED' => $this->handleUpdated($resource),
             'BILLING.SUBSCRIPTION.PAYMENT.FAILED' => $this->handlePaymentFailed($resource),
             'PAYMENT.SALE.COMPLETED' => $this->handlePaymentCompleted($resource),
             default => response('Event not handled', 200),
@@ -85,6 +89,9 @@ class PayPalWebhookController extends Controller
             'cancellation_reason' => 'Cancelado desde PayPal',
         ]);
 
+        // Deactivate all addons
+        $subscription->addons()->where('is_active', true)->update(['is_active' => false]);
+
         Log::info('PayPal subscription cancelled', ['subscription_id' => $subscription->id]);
 
         return response('OK', 200);
@@ -103,6 +110,84 @@ class PayPalWebhookController extends Controller
         ]);
 
         Log::info('PayPal subscription suspended', ['subscription_id' => $subscription->id]);
+
+        return response('OK', 200);
+    }
+
+    private function handleUpdated(array $resource)
+    {
+        $subscription = $this->findSubscription($resource);
+        if (! $subscription) {
+            Log::warning('PayPal updated: subscription not found', $resource);
+
+            return response('Not found', 200);
+        }
+
+        // Check if there's a pending addon activation from cache
+        $pending = Cache::pull("pending_addon_{$subscription->id}");
+        if ($pending) {
+            $addonType = $pending['addon_type'];
+            $price = $pending['price'];
+
+            SubscriptionAddon::updateOrCreate(
+                ['subscription_id' => $subscription->id, 'addon_type' => $addonType],
+                ['price' => $price, 'is_active' => true]
+            );
+
+            $addonLabel = match ($addonType) {
+                'support' => 'Soporte Premium',
+                'delivery_app' => 'App de Delivery',
+                default => 'Addon',
+            };
+
+            Invoice::withoutGlobalScope('tenant')->create([
+                'tenant_id' => $subscription->tenant_id,
+                'subscription_id' => $subscription->id,
+                'type' => 'addon',
+                'status' => 'paid',
+                'amount' => $price,
+                'tax' => 0,
+                'total' => $price,
+                'currency' => $subscription->plan->currency ?? 'USD',
+                'payment_method' => 'paypal',
+                'paid_at' => now(),
+                'description' => "{$addonLabel} - Activacion via PayPal (webhook)",
+                'metadata' => ['paypal_subscription_id' => $subscription->paypal_subscription_id],
+            ]);
+
+            Log::info('PayPal subscription updated: addon activated via webhook', [
+                'subscription_id' => $subscription->id,
+                'addon_type' => $addonType,
+            ]);
+        }
+
+        // Check if there's a pending plan change
+        $pendingPlan = Cache::pull("pending_plan_change_{$subscription->id}");
+        if ($pendingPlan) {
+            $newPlan = Plan::find($pendingPlan['plan_id']);
+            if ($newPlan) {
+                $newPrice = $newPlan->getPriceForPeriod($subscription->billing_period);
+                $subscription->update([
+                    'plan_id' => $newPlan->id,
+                    'price' => $newPrice,
+                ]);
+                $subscription->tenant->update([
+                    'plan_id' => $newPlan->id,
+                    'subscription_plan' => $newPlan->slug,
+                ]);
+
+                Log::info('PayPal subscription updated: plan changed via webhook', [
+                    'subscription_id' => $subscription->id,
+                    'new_plan' => $newPlan->name,
+                ]);
+            }
+        }
+
+        if (!$pending && !$pendingPlan) {
+            Log::info('PayPal subscription updated (no pending changes)', [
+                'subscription_id' => $subscription->id,
+            ]);
+        }
 
         return response('OK', 200);
     }

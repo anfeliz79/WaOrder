@@ -208,6 +208,64 @@ class PayPalService
     }
 
     /**
+     * Revise a PayPal subscription (change billing amount for addons).
+     *
+     * If the new price is higher, PayPal returns an approval URL.
+     * If lower or equal, the change applies immediately.
+     */
+    public function reviseSubscription(
+        string $paypalSubscriptionId,
+        float $newPrice,
+        string $currency = 'USD',
+        string $billingPeriod = 'monthly',
+        string $returnUrl = '',
+        string $cancelUrl = '',
+    ): array {
+        $response = $this->api()->post("/v1/billing/subscriptions/{$paypalSubscriptionId}/revise", [
+            'plan' => [
+                'billing_cycles' => [
+                    [
+                        'frequency' => [
+                            'interval_unit' => $billingPeriod === 'annual' ? 'YEAR' : 'MONTH',
+                            'interval_count' => 1,
+                        ],
+                        'tenure_type' => 'REGULAR',
+                        'sequence' => 1,
+                        'total_cycles' => 0,
+                        'pricing_scheme' => [
+                            'fixed_price' => [
+                                'value' => number_format($newPrice, 2, '.', ''),
+                                'currency_code' => $currency,
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            'application_context' => [
+                'return_url' => $returnUrl,
+                'cancel_url' => $cancelUrl,
+            ],
+        ]);
+
+        if (! $response->successful()) {
+            Log::error('PayPal revise subscription failed', [
+                'response' => $response->body(),
+                'subscription_id' => $paypalSubscriptionId,
+                'new_price' => $newPrice,
+            ]);
+            throw new \Exception('Error revisando suscripcion en PayPal');
+        }
+
+        $data = $response->json();
+        $approvalUrl = collect($data['links'] ?? [])->firstWhere('rel', 'approve')['href'] ?? null;
+
+        return [
+            'requires_approval' => $approvalUrl !== null,
+            'approval_url' => $approvalUrl,
+        ];
+    }
+
+    /**
      * Cancel a PayPal subscription.
      */
     public function cancelSubscription(string $paypalSubscriptionId, string $reason = 'Cancelled by user'): bool

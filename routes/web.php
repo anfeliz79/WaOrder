@@ -111,6 +111,9 @@ Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class, \App\Http
         Route::post('/billing/change-plan', [\App\Http\Controllers\Api\BillingController::class, 'changePlan']);
         Route::post('/billing/cancel', [\App\Http\Controllers\Api\BillingController::class, 'cancel']);
         Route::post('/billing/reactivate', [\App\Http\Controllers\Api\BillingController::class, 'reactivate']);
+        Route::post('/billing/addon/toggle', [\App\Http\Controllers\Api\BillingController::class, 'toggleAddon']);
+        Route::get('/billing/addon/paypal-approved', [\App\Http\Controllers\Api\BillingController::class, 'addonPayPalCallback']);
+        Route::get('/billing/plan-change/paypal-approved', [\App\Http\Controllers\Api\BillingController::class, 'planChangePayPalCallback']);
     });
 
     // Bot pause toggle (admin only)

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->string('icon', 50)->nullable();
             $table->boolean('is_active')->default(false);
-            $table->json('config')->nullable();
+            $table->text('config')->nullable();
             $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
         });
