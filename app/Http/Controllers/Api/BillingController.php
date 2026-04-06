@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Plan;
+use App\Services\Payment\PayPalService;
 use App\Services\Subscription\SubscriptionManager;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class BillingController extends Controller
@@ -41,13 +43,29 @@ class BillingController extends Controller
                 ->count(),
         ];
 
-        return Inertia::render('Billing/Index', [
-            'subscription' => $subscription,
-            'paymentMethod' => $defaultToken ? [
+        // Build payment method info — card token or PayPal
+        $paymentMethodInfo = null;
+        if ($defaultToken) {
+            $paymentMethodInfo = [
+                'type' => 'cardnet',
                 'brand' => $defaultToken->card_brand,
                 'last_four' => $defaultToken->card_last_four,
                 'expiry' => $defaultToken->card_expiry,
-            ] : null,
+            ];
+        } elseif ($subscription?->payment_method === 'paypal' && $subscription?->paypal_subscription_id) {
+            $paymentMethodInfo = [
+                'type' => 'paypal',
+                'paypal_subscription_id' => $subscription->paypal_subscription_id,
+            ];
+        } elseif ($subscription?->payment_method === 'bank_transfer') {
+            $paymentMethodInfo = [
+                'type' => 'bank_transfer',
+            ];
+        }
+
+        return Inertia::render('Billing/Index', [
+            'subscription' => $subscription,
+            'paymentMethod' => $paymentMethodInfo,
             'invoices' => $invoices,
             'plans' => $plans,
             'usage' => $usage,
@@ -80,6 +98,21 @@ class BillingController extends Controller
 
         if (!$subscription || !$subscription->isActive()) {
             return back()->with('error', 'No tienes una suscripcion activa.');
+        }
+
+        // If subscription is via PayPal, also cancel it on PayPal's side
+        if ($subscription->paypal_subscription_id) {
+            try {
+                app(PayPalService::class)->cancelSubscription(
+                    $subscription->paypal_subscription_id,
+                    $request->input('reason', 'Cancelled by user')
+                );
+            } catch (\Exception $e) {
+                Log::warning('Failed to cancel PayPal subscription', [
+                    'paypal_subscription_id' => $subscription->paypal_subscription_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         $reason = $request->input('reason', '');

@@ -4,7 +4,8 @@ import { Head, router, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import {
     CreditCard, ArrowUpRight, X, Check, AlertTriangle, Clock,
-    Store, UtensilsCrossed, Truck, Users, ShoppingBag
+    Store, UtensilsCrossed, Truck, Users, ShoppingBag,
+    Wallet, Building2
 } from 'lucide-vue-next'
 
 defineOptions({ layout: AdminLayout })
@@ -196,7 +197,9 @@ const invoiceStatusBadge = (status) => {
                 <!-- Payment Method -->
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                     <h2 class="text-lg font-semibold text-gray-900 mb-4">Metodo de Pago</h2>
-                    <div v-if="paymentMethod" class="flex items-center gap-3">
+
+                    <!-- Card (Cardnet) -->
+                    <div v-if="paymentMethod?.type === 'cardnet' || (paymentMethod && !paymentMethod.type)" class="flex items-center gap-3">
                         <div class="w-12 h-8 bg-gray-100 rounded flex items-center justify-center">
                             <CreditCard class="w-5 h-5 text-gray-500" />
                         </div>
@@ -207,6 +210,32 @@ const invoiceStatusBadge = (status) => {
                             <p v-if="paymentMethod.expiry" class="text-xs text-gray-500">Exp. {{ paymentMethod.expiry }}</p>
                         </div>
                     </div>
+
+                    <!-- PayPal -->
+                    <div v-else-if="paymentMethod?.type === 'paypal'" class="flex items-center gap-3">
+                        <div class="w-12 h-8 bg-blue-50 rounded flex items-center justify-center">
+                            <Wallet class="w-5 h-5 text-[#0070ba]" />
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">PayPal</p>
+                            <p v-if="paymentMethod.paypal_subscription_id" class="text-xs text-gray-500">
+                                ID: {{ paymentMethod.paypal_subscription_id }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Bank Transfer -->
+                    <div v-else-if="paymentMethod?.type === 'bank_transfer'" class="flex items-center gap-3">
+                        <div class="w-12 h-8 bg-gray-100 rounded flex items-center justify-center">
+                            <Building2 class="w-5 h-5 text-gray-500" />
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">Transferencia Bancaria</p>
+                            <p class="text-xs text-gray-500">Pago verificado manualmente</p>
+                        </div>
+                    </div>
+
+                    <!-- No payment method -->
                     <div v-else class="text-sm text-gray-500">
                         No hay metodo de pago registrado.
                     </div>

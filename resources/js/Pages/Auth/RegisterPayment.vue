@@ -3,7 +3,8 @@ import { ref, onMounted, computed } from 'vue'
 import { Head, router, useForm } from '@inertiajs/vue3'
 import {
     CreditCard, CheckCircle, AlertCircle, Loader2, ShieldCheck,
-    ArrowLeft, Building2, Upload, X, FileText, ImageIcon
+    ArrowLeft, Building2, Upload, X, FileText, ImageIcon,
+    Wallet, AlertTriangle
 } from 'lucide-vue-next'
 import axios from 'axios'
 
@@ -12,10 +13,43 @@ const props = defineProps({
     publicKey: String,
     checkoutScriptBase: String,
     bankAccounts: { type: Array, default: () => [] },
+    payment_methods: { type: Array, default: () => [] },
 })
 
-// ── Payment method ────────────────────────────────────────────────────────────
+// ── Dynamic payment method resolution ────────────────────────────────────────
+// If payment_methods prop is provided and non-empty, use dynamic tabs.
+// Otherwise, fall back to legacy hardcoded behavior (card + transfer).
+const useDynamicMethods = computed(() => Array.isArray(props.payment_methods) && props.payment_methods.length > 0)
+const hasNoMethods = computed(() => Array.isArray(props.payment_methods) && props.payment_methods.length === 0 && props.payment_methods !== undefined)
+
+// For dynamic mode: the selected method slug
+const selectedMethod = ref(null)
+
+// For legacy mode: the payment method string
 const paymentMethod = ref(props.bankAccounts.length ? 'transfer' : 'card')
+
+// Icon mapping for dynamic tabs
+const iconMap = {
+    cardnet: CreditCard,
+    bank_transfer: Building2,
+    paypal: Wallet,
+}
+
+const getMethodIcon = (slug) => iconMap[slug] || Wallet
+
+// Initialize selected method
+onMounted(() => {
+    if (useDynamicMethods.value) {
+        selectedMethod.value = props.payment_methods[0]?.slug ?? null
+    }
+})
+
+const selectMethod = (slug) => {
+    selectedMethod.value = slug
+    if (slug === 'cardnet' && !scriptLoaded.value && props.publicKey) {
+        loadCheckoutScript()
+    }
+}
 
 // ── Card (Cardnet) state ──────────────────────────────────────────────────────
 const cardState    = ref('idle') // idle | loading_script | ready | processing | success | error
@@ -36,6 +70,10 @@ const transferForm = useForm({
     evidence:         null,
 })
 
+// ── PayPal state ──────────────────────────────────────────────────────────────
+const paypalLoading = ref(false)
+const paypalError = ref(null)
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const planPrice = computed(() => {
     const price    = parseFloat(props.plan?.price_monthly || 0)
@@ -43,12 +81,32 @@ const planPrice = computed(() => {
     return new Intl.NumberFormat('es-DO', { style: 'currency', currency, maximumFractionDigits: 2 }).format(price)
 })
 
+const formatPrice = (price) => {
+    if (!price || parseFloat(price) === 0) return 'Gratis'
+    const currency = props.plan?.currency || 'DOP'
+    return new Intl.NumberFormat('es-DO', { style: 'currency', currency, maximumFractionDigits: 2 }).format(price)
+}
+
 const selectedBankAccount = computed(() => props.bankAccounts.find(b => b.id === selectedBank.value))
+
+// Determine which content to show — works for both dynamic and legacy mode
+const activeSlug = computed(() => {
+    if (useDynamicMethods.value) return selectedMethod.value
+    return paymentMethod.value === 'card' ? 'cardnet' : 'bank_transfer'
+})
 
 // ── Cardnet logic ─────────────────────────────────────────────────────────────
 onMounted(() => {
-    if (paymentMethod.value === 'card' && props.publicKey) {
-        loadCheckoutScript()
+    if (useDynamicMethods.value) {
+        // In dynamic mode, load script if cardnet is the first method
+        if (selectedMethod.value === 'cardnet' && props.publicKey) {
+            loadCheckoutScript()
+        }
+    } else {
+        // Legacy mode
+        if (paymentMethod.value === 'card' && props.publicKey) {
+            loadCheckoutScript()
+        }
     }
 })
 
@@ -68,7 +126,7 @@ const loadCheckoutScript = () => {
     script.onload   = initCheckout
     script.onerror  = () => {
         cardState.value = 'error'
-        cardError.value = 'No se pudo cargar el módulo de pago. Intenta recargar la página.'
+        cardError.value = 'No se pudo cargar el modulo de pago. Intenta recargar la pagina.'
     }
     document.head.appendChild(script)
 }
@@ -76,7 +134,7 @@ const loadCheckoutScript = () => {
 const initCheckout = () => {
     if (!window.PWCheckout) {
         cardState.value = 'error'
-        cardError.value = 'Error al inicializar el módulo de pago.'
+        cardError.value = 'Error al inicializar el modulo de pago.'
         return
     }
     window.PWCheckout.SetProperties({
@@ -86,7 +144,7 @@ const initCheckout = () => {
         amount: String(parseFloat(props.plan?.price_monthly || 0).toFixed(2)),
         form_id: 'cardnet-form',
         lang: 'ESP',
-        description: `Suscripción ${props.plan?.name}`,
+        description: `Suscripcion ${props.plan?.name}`,
     })
     window.PWCheckout.AddActionButton('cardnet-pay-btn')
     window.PWCheckout.Bind('tokenCreated', handleTokenCreated)
@@ -172,10 +230,38 @@ const submitTransfer = () => {
         },
     })
 }
+
+// ── PayPal logic ──────────────────────────────────────────────────────────────
+const startPayPalSubscription = async () => {
+    paypalLoading.value = true
+    paypalError.value = null
+
+    try {
+        const response = await fetch('/register/payment/paypal/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+            },
+        })
+
+        const data = await response.json()
+
+        if (data.approval_url) {
+            window.location.href = data.approval_url
+        } else {
+            paypalError.value = data.error || 'Error al conectar con PayPal'
+            paypalLoading.value = false
+        }
+    } catch (error) {
+        paypalError.value = 'Error de conexion. Intenta de nuevo.'
+        paypalLoading.value = false
+    }
+}
 </script>
 
 <template>
-    <Head title="Activar Suscripción — WaOrder" />
+    <Head title="Activar Suscripcion — WaOrder" />
 
     <div class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center py-12 px-4">
         <div class="w-full max-w-md">
@@ -192,8 +278,24 @@ const submitTransfer = () => {
                 <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <CheckCircle class="w-8 h-8 text-green-600" />
                 </div>
-                <h2 class="text-xl font-bold text-gray-900 mb-2">¡Pago exitoso!</h2>
-                <p class="text-gray-500 text-sm">Redirigiendo a la configuración inicial…</p>
+                <h2 class="text-xl font-bold text-gray-900 mb-2">Pago exitoso!</h2>
+                <p class="text-gray-500 text-sm">Redirigiendo a la configuracion inicial...</p>
+            </div>
+
+            <!-- Empty state: no payment methods available -->
+            <div v-else-if="hasNoMethods" class="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+                <div class="text-center py-12">
+                    <AlertTriangle class="w-12 h-12 text-amber-400 mx-auto mb-3" />
+                    <h3 class="text-lg font-semibold text-gray-900">Metodos de pago no disponibles</h3>
+                    <p class="text-gray-500 mt-1">Contacta al administrador para habilitar un metodo de pago.</p>
+                </div>
+                <!-- Back link -->
+                <div class="text-center mt-4">
+                    <a href="/register" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+                        <ArrowLeft class="w-3.5 h-3.5" />
+                        Volver al registro
+                    </a>
+                </div>
             </div>
 
             <!-- Main card -->
@@ -205,8 +307,8 @@ const submitTransfer = () => {
                         <CreditCard class="w-5 h-5 text-[#0052FF]" />
                     </div>
                     <div>
-                        <h2 class="text-xl font-bold text-gray-900">Activar Suscripción</h2>
-                        <p class="text-sm text-gray-500">Elige tu método de pago</p>
+                        <h2 class="text-xl font-bold text-gray-900">Activar Suscripcion</h2>
+                        <p class="text-sm text-gray-500">Elige tu metodo de pago</p>
                     </div>
                 </div>
 
@@ -215,35 +317,53 @@ const submitTransfer = () => {
                     <div class="flex justify-between items-center">
                         <div>
                             <p class="text-sm font-semibold text-[#002F94]">Plan {{ plan?.name }}</p>
-                            <p class="text-xs text-[#0052FF] mt-0.5">Facturación mensual</p>
+                            <p class="text-xs text-[#0052FF] mt-0.5">Facturacion mensual</p>
                         </div>
                         <p class="text-xl font-bold text-[#0047DB]">{{ planPrice }}<span class="text-sm font-normal">/mes</span></p>
                     </div>
                 </div>
 
-                <!-- Payment method tabs -->
-                <div class="flex rounded-xl border border-gray-200 p-1 mb-6 gap-1">
-                    <button
-                        @click="switchToCard"
-                        :class="['flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition',
-                                 paymentMethod === 'card' ? 'bg-[#0052FF] text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50']"
-                    >
-                        <CreditCard class="w-4 h-4" />
-                        Tarjeta
-                    </button>
-                    <button
-                        v-if="bankAccounts.length > 0"
-                        @click="paymentMethod = 'transfer'"
-                        :class="['flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition',
-                                 paymentMethod === 'transfer' ? 'bg-[#0052FF] text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50']"
-                    >
-                        <Building2 class="w-4 h-4" />
-                        Transferencia
-                    </button>
-                </div>
+                <!-- ═══ DYNAMIC PAYMENT TABS ═══ -->
+                <template v-if="useDynamicMethods">
+                    <div class="flex rounded-xl border border-gray-200 p-1 mb-6 gap-1">
+                        <button
+                            v-for="method in payment_methods"
+                            :key="method.slug"
+                            @click="selectMethod(method.slug)"
+                            :class="['flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition',
+                                     selectedMethod === method.slug ? 'bg-[#0052FF] text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50']"
+                        >
+                            <component :is="getMethodIcon(method.slug)" class="w-4 h-4" />
+                            {{ method.name }}
+                        </button>
+                    </div>
+                </template>
 
-                <!-- ── CARD PAYMENT ── -->
-                <template v-if="paymentMethod === 'card'">
+                <!-- ═══ LEGACY HARDCODED TABS ═══ -->
+                <template v-else>
+                    <div class="flex rounded-xl border border-gray-200 p-1 mb-6 gap-1">
+                        <button
+                            @click="switchToCard"
+                            :class="['flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition',
+                                     paymentMethod === 'card' ? 'bg-[#0052FF] text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50']"
+                        >
+                            <CreditCard class="w-4 h-4" />
+                            Tarjeta
+                        </button>
+                        <button
+                            v-if="bankAccounts.length > 0"
+                            @click="paymentMethod = 'transfer'"
+                            :class="['flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition',
+                                     paymentMethod === 'transfer' ? 'bg-[#0052FF] text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50']"
+                        >
+                            <Building2 class="w-4 h-4" />
+                            Transferencia
+                        </button>
+                    </div>
+                </template>
+
+                <!-- ── CARD PAYMENT (cardnet) ── -->
+                <template v-if="activeSlug === 'cardnet'">
                     <div v-if="cardState === 'error' && cardError" class="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl flex items-start gap-2">
                         <AlertCircle class="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
                         <p class="text-sm text-red-700">{{ cardError }}</p>
@@ -255,11 +375,11 @@ const submitTransfer = () => {
 
                     <div v-if="cardState === 'loading_script'" class="flex items-center justify-center py-6 gap-2 text-gray-500">
                         <Loader2 class="w-5 h-5 animate-spin" />
-                        <span class="text-sm">Cargando módulo de pago…</span>
+                        <span class="text-sm">Cargando modulo de pago...</span>
                     </div>
                     <div v-else-if="cardState === 'processing'" class="flex items-center justify-center py-6 gap-2 text-[#0052FF]">
                         <Loader2 class="w-5 h-5 animate-spin" />
-                        <span class="text-sm font-medium">Procesando pago…</span>
+                        <span class="text-sm font-medium">Procesando pago...</span>
                     </div>
                     <div v-else-if="cardState === 'ready'">
                         <button id="cardnet-pay-btn" type="button"
@@ -276,7 +396,7 @@ const submitTransfer = () => {
                     </div>
                     <div v-else-if="cardState === 'idle'" class="flex items-center justify-center py-6 gap-2 text-gray-500">
                         <Loader2 class="w-5 h-5 animate-spin" />
-                        <span class="text-sm">Inicializando…</span>
+                        <span class="text-sm">Inicializando...</span>
                     </div>
 
                     <div class="mt-4 flex items-center justify-center gap-1.5 text-gray-400">
@@ -286,7 +406,7 @@ const submitTransfer = () => {
                 </template>
 
                 <!-- ── BANK TRANSFER ── -->
-                <template v-else-if="paymentMethod === 'transfer'">
+                <template v-else-if="activeSlug === 'bank_transfer'">
 
                     <!-- Bank account selector -->
                     <div v-if="bankAccounts.length > 1" class="mb-4">
@@ -325,14 +445,14 @@ const submitTransfer = () => {
                             </div>
                         </div>
                         <p v-if="selectedBankAccount.instructions" class="mt-3 text-xs text-amber-700 bg-amber-50 rounded-lg p-2">
-                            💡 {{ selectedBankAccount.instructions }}
+                            {{ selectedBankAccount.instructions }}
                         </p>
                     </div>
 
                     <!-- Reference number -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Número de referencia <span class="text-gray-400 font-normal">(opcional)</span>
+                            Numero de referencia <span class="text-gray-400 font-normal">(opcional)</span>
                         </label>
                         <input v-model="referenceNumber" type="text" placeholder="ej. 00012345678"
                                class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3385ff]" />
@@ -362,7 +482,7 @@ const submitTransfer = () => {
                                class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-300 hover:border-[#3385ff] rounded-xl p-6 cursor-pointer transition bg-gray-50 hover:bg-blue-50">
                             <Upload class="w-6 h-6 text-gray-400" />
                             <p class="text-sm text-gray-600 font-medium">Subir comprobante</p>
-                            <p class="text-xs text-gray-400">JPG, PNG, WEBP o PDF · máx. 5 MB</p>
+                            <p class="text-xs text-gray-400">JPG, PNG, WEBP o PDF - max. 5 MB</p>
                             <input type="file" class="hidden" accept=".jpg,.jpeg,.png,.webp,.pdf" @change="onFileChange" />
                         </label>
                     </div>
@@ -378,19 +498,45 @@ const submitTransfer = () => {
                             class="w-full py-3 px-6 bg-[#0052FF] text-white font-semibold rounded-xl hover:bg-[#0047DB] transition-all text-sm shadow-lg shadow-blue-200 flex items-center justify-center gap-2 disabled:opacity-50">
                         <Loader2 v-if="transferForm.processing" class="w-4 h-4 animate-spin" />
                         <Upload v-else class="w-4 h-4" />
-                        {{ transferForm.processing ? 'Enviando comprobante…' : 'Enviar comprobante' }}
+                        {{ transferForm.processing ? 'Enviando comprobante...' : 'Enviar comprobante' }}
                     </button>
 
                     <div class="mt-4 flex items-center justify-center gap-1.5 text-gray-400">
                         <ShieldCheck class="w-4 h-4" />
-                        <p class="text-xs">Tu comprobante se verificará en hasta 12 horas</p>
+                        <p class="text-xs">Tu comprobante se verificara en hasta 12 horas</p>
+                    </div>
+                </template>
+
+                <!-- ── PAYPAL ── -->
+                <template v-else-if="activeSlug === 'paypal'">
+                    <div class="space-y-6">
+                        <div class="text-center py-6">
+                            <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <Wallet class="w-8 h-8 text-blue-600" />
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900">Pagar con PayPal</h3>
+                            <p class="text-gray-500 mt-1">Seras redirigido a PayPal para completar tu suscripcion</p>
+                            <div class="mt-4 bg-gray-50 rounded-xl p-4 inline-block">
+                                <p class="text-sm text-gray-600">Plan: <strong>{{ plan?.name }}</strong></p>
+                                <p class="text-2xl font-bold text-gray-900 mt-1">{{ formatPrice(plan?.price_monthly) }}<span class="text-sm font-normal text-gray-500">/mes</span></p>
+                            </div>
+                        </div>
+                        <button
+                            @click="startPayPalSubscription"
+                            :disabled="paypalLoading"
+                            class="w-full py-3 px-4 bg-[#0070ba] hover:bg-[#003087] text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+                        >
+                            <span v-if="paypalLoading" class="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full"></span>
+                            <span v-else>Suscribirse con PayPal</span>
+                        </button>
+                        <p v-if="paypalError" class="text-sm text-red-600 text-center">{{ paypalError }}</p>
                     </div>
                 </template>
 
             </div>
 
             <!-- Back link -->
-            <div v-if="cardState !== 'success'" class="text-center mt-4">
+            <div v-if="cardState !== 'success' && !hasNoMethods" class="text-center mt-4">
                 <a href="/register" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
                     <ArrowLeft class="w-3.5 h-3.5" />
                     Volver al registro

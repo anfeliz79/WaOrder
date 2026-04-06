@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\BankAccount;
 use App\Models\CardnetToken;
+use App\Models\PaymentMethod;
 use App\Services\Payment\CardnetTokenizationService;
 use App\Services\Subscription\SubscriptionManager;
 use Illuminate\Http\Request;
@@ -54,11 +55,26 @@ class RegistrationPaymentController extends Controller
             ->orderBy('created_at')
             ->get(['id', 'bank_name', 'account_holder_name', 'account_number', 'account_type', 'currency', 'instructions']);
 
+        // Load active payment methods configured by SuperAdmin
+        $paymentMethods = [];
+        try {
+            $paymentMethods = PaymentMethod::active()->get()->map(fn($m) => [
+                'slug' => $m->slug,
+                'name' => $m->name,
+                'icon' => $m->icon,
+                'description' => $m->description,
+            ])->values()->toArray();
+        } catch (\Throwable $e) {
+            // PaymentMethod table may not exist yet — fall back to empty (legacy mode)
+            Log::debug('PaymentMethod query failed, using legacy payment tabs', ['error' => $e->getMessage()]);
+        }
+
         return Inertia::render('Auth/RegisterPayment', [
             'plan'               => $subscription->load('plan')->plan,
             'publicKey'          => config('cardnet.platform.public_key'),
             'checkoutScriptBase' => $checkoutScriptBase,
             'bankAccounts'       => $bankAccounts,
+            'payment_methods'    => $paymentMethods,
         ]);
     }
 

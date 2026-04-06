@@ -21,10 +21,12 @@ class Invoice extends Model
         'total',
         'currency',
         'description',
+        'payment_method',
         'cardnet_purchase_id',
         'cardnet_response',
         'paid_at',
         'due_at',
+        'metadata',
     ];
 
     protected $casts = [
@@ -32,6 +34,7 @@ class Invoice extends Model
         'tax' => 'decimal:2',
         'total' => 'decimal:2',
         'cardnet_response' => 'array',
+        'metadata' => 'array',
         'paid_at' => 'datetime',
         'due_at' => 'datetime',
     ];

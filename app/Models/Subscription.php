@@ -17,12 +17,16 @@ class Subscription extends Model
         'status',
         'billing_period',
         'price',
+        'payment_method',
+        'paypal_subscription_id',
+        'paypal_plan_id',
         'trial_ends_at',
         'current_period_start',
         'current_period_end',
         'grace_period_ends_at',
         'cancelled_at',
         'cancellation_reason',
+        'admin_notes',
     ];
 
     protected $casts = [

@@ -31,6 +31,7 @@ class Plan extends Model
         'is_active',
         'sort_order',
         'metadata',
+        'paypal_plan_id',
     ];
 
     protected $casts = [
