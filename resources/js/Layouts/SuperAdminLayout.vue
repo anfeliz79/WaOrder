@@ -4,7 +4,7 @@ import { Link, Head, router, usePage } from '@inertiajs/vue3'
 import {
     LayoutDashboard, Store, LogOut, Menu, X,
     ChevronRight, Shield, CreditCard, Settings, Server, Receipt,
-    Building2, ArrowUpDown
+    Building2, ArrowUpDown, Wallet
 } from 'lucide-vue-next'
 
 defineProps({
@@ -27,6 +27,7 @@ const navItems = [
     { name: 'Suscripciones',   href: '/superadmin/subscriptions',                icon: Receipt },
     { name: 'Transferencias',  href: '/superadmin/transfer-verifications',        icon: ArrowUpDown, badge: 'pendingTransfers' },
     { name: 'Cuentas Bancarias', href: '/superadmin/bank-accounts',              icon: Building2 },
+    { name: 'Metodos de Pago', href: '/superadmin/payment-methods',             icon: Wallet },
     { name: 'Sistema',         href: '/superadmin/system',                       icon: Server },
     { name: 'Configuracion',   href: '/superadmin/settings',                     icon: Settings },
 ]
