@@ -1,7 +1,7 @@
 <script setup>
 import { Link, Head, useForm, usePage } from '@inertiajs/vue3'
 import SuperAdminLayout from '@/Layouts/SuperAdminLayout.vue'
-import { CreditCard, MessageCircle, Shield, Brain } from 'lucide-vue-next'
+import { CreditCard, MessageCircle, Shield, Brain, Mail } from 'lucide-vue-next'
 
 defineOptions({ layout: SuperAdminLayout })
 
@@ -16,6 +16,15 @@ const form = useForm({
     whatsapp_contact: props.settings.whatsapp_contact || '',
     ai_provider: props.settings.ai_provider || 'groq',
     ai_api_key: '',
+    // SMTP
+    mail_mailer: props.settings.mail_mailer || 'log',
+    mail_host: props.settings.mail_host || '',
+    mail_port: props.settings.mail_port || '587',
+    mail_username: props.settings.mail_username || '',
+    mail_password: '',
+    mail_encryption: props.settings.mail_encryption || 'tls',
+    mail_from_address: props.settings.mail_from_address || '',
+    mail_from_name: props.settings.mail_from_name || '',
 })
 
 const submit = () => {
@@ -116,6 +125,101 @@ const submit = () => {
                         <Shield class="w-4 h-4" />
                         <span v-if="settings.ai_has_key">IA configurada — proveedor: {{ settings.ai_provider }}</span>
                         <span v-else>Sin API key — el chatbot usara solo regex + fuzzy matching.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SMTP / Email -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <Mail class="w-5 h-5 text-[#0052FF]" />
+                    <h2 class="text-lg font-semibold text-gray-900">Correo Electronico (SMTP)</h2>
+                </div>
+                <p class="text-sm text-gray-500 mb-4">
+                    Configura el servidor SMTP para enviar correos de bienvenida, activacion de plan y notificaciones.
+                </p>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Mailer</label>
+                        <select v-model="form.mail_mailer"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3385ff] focus:border-[#0052FF]">
+                            <option value="smtp">SMTP</option>
+                            <option value="log">Log (solo desarrollo)</option>
+                        </select>
+                    </div>
+
+                    <template v-if="form.mail_mailer === 'smtp'">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Host</label>
+                                <input v-model="form.mail_host" type="text"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3385ff] focus:border-[#0052FF]"
+                                    placeholder="smtp.gmail.com" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Puerto</label>
+                                <input v-model="form.mail_port" type="text"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3385ff] focus:border-[#0052FF]"
+                                    placeholder="587" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
+                            <input v-model="form.mail_username" type="text"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3385ff] focus:border-[#0052FF]"
+                                placeholder="tu@email.com" />
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Contrasena</label>
+                            <input v-model="form.mail_password" type="password"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3385ff] focus:border-[#0052FF]"
+                                :placeholder="settings.mail_has_password ? settings.mail_password : 'No configurada'" />
+                            <p class="mt-1 text-xs text-gray-400">Dejar vacio para mantener la contrasena actual.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Encriptacion</label>
+                            <select v-model="form.mail_encryption"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3385ff] focus:border-[#0052FF]">
+                                <option value="tls">TLS</option>
+                                <option value="ssl">SSL</option>
+                                <option value="null">Ninguna</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Email remitente</label>
+                                <input v-model="form.mail_from_address" type="email"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3385ff] focus:border-[#0052FF]"
+                                    placeholder="noreply@waorder.com" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre remitente</label>
+                                <input v-model="form.mail_from_name" type="text"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3385ff] focus:border-[#0052FF]"
+                                    placeholder="WaOrder" />
+                            </div>
+                        </div>
+                    </template>
+
+                    <div :class="[
+                        'flex items-center gap-2 p-3 rounded-lg text-sm',
+                        form.mail_mailer === 'smtp' && settings.mail_has_password ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'
+                    ]">
+                        <Shield class="w-4 h-4" />
+                        <span v-if="form.mail_mailer === 'smtp' && settings.mail_has_password">
+                            SMTP configurado — {{ settings.mail_host }}:{{ settings.mail_port }}
+                        </span>
+                        <span v-else-if="form.mail_mailer === 'smtp'">
+                            SMTP sin configurar — los correos no se enviaran.
+                        </span>
+                        <span v-else>
+                            Modo log — los correos se escriben en el log, no se envian.
+                        </span>
                     </div>
                 </div>
             </div>

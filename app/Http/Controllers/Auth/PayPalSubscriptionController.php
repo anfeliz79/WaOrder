@@ -72,7 +72,9 @@ class PayPalSubscriptionController extends Controller
             $paypalSub = $paypal->getSubscription($paypalSubscriptionId);
             $status = $paypalSub['status'] ?? '';
 
-            if (in_array($status, ['ACTIVE', 'APPROVED'])) {
+            // Only ACTIVE means PayPal collected the first payment.
+            // APPROVED means the user authorized but payment hasn't been collected yet.
+            if ($status === 'ACTIVE') {
                 $subscription->update([
                     'status' => 'active',
                     'current_period_start' => now(),
@@ -100,6 +102,15 @@ class PayPalSubscriptionController extends Controller
                 ]);
 
                 return redirect('/setup')->with('success', 'Pago con PayPal confirmado!');
+            }
+
+            if ($status === 'APPROVED') {
+                Log::info('PayPal subscription approved but not yet active', [
+                    'paypal_subscription_id' => $paypalSubscriptionId,
+                    'tenant_id' => $subscription->tenant_id,
+                ]);
+
+                return redirect('/register/payment')->with('error', 'Tu suscripcion de PayPal fue autorizada pero el primer pago aun no se ha procesado. Intenta de nuevo en unos minutos.');
             }
 
             return redirect('/register/payment')->with('error', 'La suscripcion de PayPal no fue aprobada. Intenta de nuevo.');

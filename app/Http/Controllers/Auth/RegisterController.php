@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Mail\WelcomeMail;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Tenant;
@@ -10,7 +11,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -30,10 +32,19 @@ class RegisterController extends Controller
 
     public function register(Request $request)
     {
+        // Check email globally across all tenants (bypassing BelongsToTenant scope)
+        $emailExists = User::withoutGlobalScope('tenant')
+            ->where('email', $request->input('email'))
+            ->exists();
+
         $validated = $request->validate([
             'restaurant_name' => ['required', 'string', 'max:100'],
             'name' => ['required', 'string', 'max:100'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'email', 'max:255', function ($attribute, $value, $fail) use ($emailExists) {
+                if ($emailExists) {
+                    $fail('Este email ya esta registrado.');
+                }
+            }],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'plan_slug' => ['required', 'string', 'exists:plans,slug'],
             'billing_period' => ['nullable', 'in:monthly,annual'],
@@ -41,7 +52,6 @@ class RegisterController extends Controller
             'restaurant_name.required' => 'El nombre del restaurante es requerido.',
             'name.required' => 'Tu nombre es requerido.',
             'email.required' => 'El email es requerido.',
-            'email.unique' => 'Este email ya esta registrado.',
             'password.min' => 'La contrasena debe tener al menos 8 caracteres.',
             'password.confirmed' => 'Las contrasenas no coinciden.',
         ]);
@@ -104,6 +114,13 @@ class RegisterController extends Controller
             // Login
             Auth::login($user);
             $request->session()->regenerate();
+
+            // Send welcome email
+            try {
+                Mail::to($user->email)->send(new WelcomeMail($user, $tenant));
+            } catch (\Throwable $e) {
+                Log::warning('Welcome email failed', ['email' => $user->email, 'error' => $e->getMessage()]);
+            }
 
             // Free plan → setup wizard; paid plan → payment step
             return $isFreePlan ? redirect('/setup') : redirect('/register/payment');
