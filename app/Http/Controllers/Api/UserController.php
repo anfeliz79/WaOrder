@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\User;
 use App\Services\Subscription\PlanEnforcement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -64,6 +65,8 @@ class UserController extends Controller
 
         $user->branches()->sync($data['branch_ids']);
 
+        Cache::forget('plan_usage_' . $tenant->id);
+
         return back()->with('success', 'Usuario creado');
     }
 
@@ -119,6 +122,8 @@ class UserController extends Controller
         }
 
         $user->update(['is_active' => false]);
+
+        Cache::forget('plan_usage_' . app('tenant')->id);
 
         return back()->with('success', 'Usuario desactivado');
     }

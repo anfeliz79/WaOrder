@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BotStatusController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DriverController;
 use App\Http\Controllers\Api\MenuPageController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\SetupController;
 use App\Http\Controllers\Api\SettingsController;
@@ -20,6 +22,9 @@ use App\Http\Controllers\SuperAdmin\SubscriptionController;
 use App\Http\Controllers\SuperAdmin\TenantController;
 use App\Http\Controllers\SuperAdmin\TransferVerificationController;
 use App\Http\Controllers\SuperAdmin\ImpersonationController;
+use App\Http\Controllers\SuperAdmin\PaymentMethodController;
+use App\Http\Controllers\Auth\PayPalSubscriptionController;
+use App\Http\Controllers\SuperAdmin\TenantNoticeController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\RegistrationBankTransferController;
 use App\Http\Controllers\Auth\RegistrationPaymentController;
@@ -56,6 +61,11 @@ Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class])->group(f
     // Bank transfer payment path
     Route::post('/register/bank-transfer', [RegistrationBankTransferController::class, 'submit']);
     Route::get('/register/bank-transfer/pending', [RegistrationBankTransferController::class, 'pending']);
+
+    // PayPal payment path
+    Route::post('/register/payment/paypal/create', [PayPalSubscriptionController::class, 'create'])->name('register.paypal.create');
+    Route::get('/register/payment/paypal/callback', [PayPalSubscriptionController::class, 'callback'])->name('register.paypal.callback');
+    Route::get('/register/payment/paypal/cancel', [PayPalSubscriptionController::class, 'cancel'])->name('register.paypal.cancel');
 });
 
 // Branch selection (after login, before full admin access)
@@ -90,6 +100,10 @@ Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class, \App\Http
     // Customers (admin + gestor)
     Route::get('/customers', [CustomerController::class, 'index']);
     Route::get('/customers/{customer}', [CustomerController::class, 'show']);
+    Route::post('/customers/{customer}/toggle-block', [CustomerController::class, 'toggleBlock'])->name('customers.toggle-block');
+
+    // Reports (admin + gestor)
+    Route::get('/reports', [ReportsController::class, 'index'])->name('reports');
 
     // Billing (admin only, before general admin group)
     Route::middleware('admin')->group(function () {
@@ -99,8 +113,16 @@ Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class, \App\Http
         Route::post('/billing/reactivate', [\App\Http\Controllers\Api\BillingController::class, 'reactivate']);
     });
 
+    // Bot pause toggle (admin only)
+    Route::middleware('admin')->group(function () {
+        Route::post('/bot/toggle-pause', [BotStatusController::class, 'togglePause'])->name('bot.toggle-pause');
+    });
+
     // Admin-only routes
     Route::middleware('admin')->group(function () {
+        // Onboarding
+        Route::post('/dashboard/dismiss-onboarding', [DashboardController::class, 'dismissOnboarding']);
+
         // Setup wizard
         Route::get('/setup', [SetupController::class, 'index'])->name('setup');
         Route::post('/setup/restaurant', [SetupController::class, 'saveRestaurant']);
@@ -120,6 +142,8 @@ Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class, \App\Http
         Route::put('/menu/items/{item}', [\App\Http\Controllers\Api\MenuItemController::class, 'update']);
         Route::patch('/menu/items/{item}/availability', [\App\Http\Controllers\Api\MenuItemController::class, 'toggleAvailability']);
         Route::delete('/menu/items/{item}', [\App\Http\Controllers\Api\MenuItemController::class, 'destroy']);
+        Route::post('/menu/items/{item}/image', [\App\Http\Controllers\Api\MenuItemController::class, 'uploadImage'])->name('menu.items.upload-image');
+        Route::delete('/menu/items/{item}/image', [\App\Http\Controllers\Api\MenuItemController::class, 'deleteImage'])->name('menu.items.delete-image');
 
         // Drivers
         Route::get('/drivers', [DriverController::class, 'index']);
@@ -148,6 +172,7 @@ Route::middleware(['auth', \App\Http\Middleware\IdentifyTenant::class, \App\Http
         Route::get('/settings', [SettingsController::class, 'index']);
         Route::put('/settings', [SettingsController::class, 'update']);
         Route::post('/settings/test-whatsapp', [SettingsController::class, 'testWhatsApp']);
+        Route::post('/settings/test-message', [SettingsController::class, 'sendTestMessage'])->name('settings.test-message');
         Route::post('/settings/test-ai', [SettingsController::class, 'testAi']);
         Route::post('/settings/notification-sound', [SettingsController::class, 'uploadNotificationSound']);
         Route::delete('/settings/notification-sound', [SettingsController::class, 'deleteNotificationSound']);
@@ -172,9 +197,19 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
 
     // Subscriptions
     Route::get('/subscriptions', [SubscriptionController::class, 'index'])->name('subscriptions.index');
+    Route::get('/subscriptions/{subscription}', [SubscriptionController::class, 'show'])->name('subscriptions.show');
     Route::post('/subscriptions/{subscription}/extend', [SubscriptionController::class, 'extend'])->name('subscriptions.extend');
     Route::post('/subscriptions/{subscription}/cancel', [SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
     Route::post('/subscriptions/{subscription}/reactivate', [SubscriptionController::class, 'reactivate'])->name('subscriptions.reactivate');
+    Route::post('/subscriptions/{subscription}/change-plan', [SubscriptionController::class, 'changePlan'])->name('subscriptions.change-plan');
+    Route::put('/subscriptions/{subscription}/notes', [SubscriptionController::class, 'updateNotes'])->name('subscriptions.update-notes');
+
+    // Tenant Notices
+    Route::get('/notices', [TenantNoticeController::class, 'index'])->name('notices.index');
+    Route::post('/notices', [TenantNoticeController::class, 'store'])->name('notices.store');
+    Route::put('/notices/{notice}', [TenantNoticeController::class, 'update'])->name('notices.update');
+    Route::post('/notices/{notice}/toggle-active', [TenantNoticeController::class, 'toggleActive'])->name('notices.toggle-active');
+    Route::delete('/notices/{notice}', [TenantNoticeController::class, 'destroy'])->name('notices.destroy');
 
     // Plans
     Route::get('/plans', [PlanController::class, 'index'])->name('plans.index');
@@ -190,6 +225,11 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
     Route::post('/bank-accounts', [BankAccountController::class, 'store'])->name('bank-accounts.store');
     Route::put('/bank-accounts/{bankAccount}', [BankAccountController::class, 'update'])->name('bank-accounts.update');
     Route::delete('/bank-accounts/{bankAccount}', [BankAccountController::class, 'destroy'])->name('bank-accounts.destroy');
+
+    // Payment methods
+    Route::get('/payment-methods', [PaymentMethodController::class, 'index'])->name('payment-methods.index');
+    Route::post('/payment-methods/{method}/toggle', [PaymentMethodController::class, 'toggleActive'])->name('payment-methods.toggle');
+    Route::put('/payment-methods/{method}/config', [PaymentMethodController::class, 'updateConfig'])->name('payment-methods.update-config');
 
     // Transfer verifications
     Route::get('/transfer-verifications', [TransferVerificationController::class, 'index'])->name('transfer-verifications.index');

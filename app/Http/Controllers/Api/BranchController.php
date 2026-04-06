@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Services\Subscription\PlanEnforcement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 class BranchController extends Controller
@@ -45,6 +46,9 @@ class BranchController extends Controller
 
         Branch::create($data);
 
+        Cache::forget('setup_alerts_' . app('tenant')->id);
+        Cache::forget('plan_usage_' . app('tenant')->id);
+
         return back()->with('success', 'Sucursal creada');
     }
 
@@ -70,6 +74,9 @@ class BranchController extends Controller
     public function destroy(Branch $branch)
     {
         $branch->update(['is_active' => false]);
+
+        Cache::forget('setup_alerts_' . app('tenant')->id);
+        Cache::forget('plan_usage_' . app('tenant')->id);
 
         return back()->with('success', 'Sucursal desactivada');
     }

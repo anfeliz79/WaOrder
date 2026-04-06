@@ -78,6 +78,11 @@ class Tenant extends Model
         return $this->hasMany(Invoice::class);
     }
 
+    public function notices(): HasMany
+    {
+        return $this->hasMany(TenantNotice::class);
+    }
+
     public function cardnetTokens(): HasMany
     {
         return $this->hasMany(CardnetToken::class);

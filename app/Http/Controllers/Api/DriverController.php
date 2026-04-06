@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Driver;
 use App\Services\Subscription\PlanEnforcement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 class DriverController extends Controller
@@ -60,6 +61,8 @@ class DriverController extends Controller
 
         Driver::create($data);
 
+        Cache::forget('plan_usage_' . app('tenant')->id);
+
         return back()->with('success', 'Mensajero registrado');
     }
 
@@ -82,6 +85,8 @@ class DriverController extends Controller
     public function destroy(Driver $driver)
     {
         $driver->update(['is_active' => false]);
+
+        Cache::forget('plan_usage_' . app('tenant')->id);
 
         return back()->with('success', 'Mensajero desactivado');
     }

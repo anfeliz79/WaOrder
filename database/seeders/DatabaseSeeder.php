@@ -14,6 +14,9 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // Seed platform-level payment methods
+        $this->call(PaymentMethodSeeder::class);
+
         // Create demo tenant
         $tenant = Tenant::create([
             'name' => 'Pizzeria Don Mario',

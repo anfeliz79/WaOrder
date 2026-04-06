@@ -1,7 +1,7 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import { useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { useForm, usePage } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
 import { Building2, Plus, Pencil, MapPin, Phone, Ruler } from 'lucide-vue-next';
 import AppButton from '@/Components/AppButton.vue';
 import AppInput from '@/Components/AppInput.vue';
@@ -11,11 +11,19 @@ import AppSwitch from '@/Components/AppSwitch.vue';
 import AppModal from '@/Components/AppModal.vue';
 import AppEmptyState from '@/Components/AppEmptyState.vue';
 import LocationPicker from '@/Components/LocationPicker.vue';
+import PlanUsageBadge from '@/Components/PlanUsageBadge.vue';
 
 defineOptions({ layout: AdminLayout });
 
 const props = defineProps({
     branches: Array,
+});
+
+const page = usePage();
+const branchUsage = computed(() => page.props.plan_usage?.branches);
+const branchAtLimit = computed(() => {
+    const u = branchUsage.value;
+    return u && !u.unlimited && u.limit && u.used >= u.limit;
 });
 
 const showAdd = ref(false);
@@ -82,12 +90,26 @@ const toggleActive = (branch) => {
     <div>
         <!-- Header -->
         <div class="flex items-center justify-between mb-6">
-            <div>
+            <div class="flex items-center gap-3">
                 <p class="text-sm text-gray-500">Administra las sucursales de tu negocio</p>
+                <PlanUsageBadge
+                    v-if="branchUsage"
+                    :used="branchUsage.used"
+                    :limit="branchUsage.limit"
+                    :unlimited="branchUsage.unlimited"
+                    label="Sucursales"
+                />
             </div>
-            <AppButton @click="showAdd = true" size="sm">
-                <Plus class="w-4 h-4 mr-1" /> Nueva sucursal
-            </AppButton>
+            <div class="relative group">
+                <AppButton @click="!branchAtLimit && (showAdd = true)" size="sm"
+                           :class="{ 'opacity-50 cursor-not-allowed': branchAtLimit }">
+                    <Plus class="w-4 h-4 mr-1" /> Nueva sucursal
+                </AppButton>
+                <div v-if="branchAtLimit"
+                     class="absolute right-0 top-full mt-2 w-56 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
+                    Has alcanzado el limite de sucursales de tu plan. Actualiza tu plan para crear mas.
+                </div>
+            </div>
         </div>
 
         <!-- Empty state -->
