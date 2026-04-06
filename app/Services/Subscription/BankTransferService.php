@@ -43,6 +43,9 @@ class BankTransferService
             'deadline_at'      => now()->addHours(12),
         ]);
 
+        // Mark payment method so middleware can redirect correctly on next login
+        $subscription->update(['payment_method' => 'bank_transfer']);
+
         Cache::forget('superadmin_pending_transfers_count');
 
         Log::info('Transfer verification submitted', [
