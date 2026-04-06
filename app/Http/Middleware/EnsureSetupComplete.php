@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Subscription;
+use App\Models\TransferVerification;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -31,8 +32,15 @@ class EnsureSetupComplete
                 ->first();
 
             if ($subscription && $subscription->status === 'pending_payment') {
-                // Bank transfer users go to the pending verification page
-                if ($subscription->payment_method === 'bank_transfer') {
+                // Bank transfer: check both payment_method field AND existing TransferVerification
+                // (covers tenants who submitted before payment_method was saved)
+                $hasPendingTransfer = $subscription->payment_method === 'bank_transfer'
+                    || TransferVerification::withoutGlobalScope('tenant')
+                        ->where('subscription_id', $subscription->id)
+                        ->whereIn('status', ['pending', 'rejected'])
+                        ->exists();
+
+                if ($hasPendingTransfer) {
                     return redirect('/register/bank-transfer/pending');
                 }
                 // Everyone else goes to the payment page
