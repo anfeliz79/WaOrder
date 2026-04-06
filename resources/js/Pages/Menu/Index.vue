@@ -1,8 +1,8 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm, router, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
-import { BookOpen, Globe, Plus, X, Pencil, Layers, ListPlus, Search, ChevronDown, ChevronUp, Image } from 'lucide-vue-next';
+import { BookOpen, Globe, Plus, X, Pencil, Layers, ListPlus, Search, ChevronDown, ChevronUp, Image, Trash2, Upload } from 'lucide-vue-next';
 import AppButton from '@/Components/AppButton.vue';
 import AppInput from '@/Components/AppInput.vue';
 import AppCard from '@/Components/AppCard.vue';
@@ -11,6 +11,7 @@ import AppSwitch from '@/Components/AppSwitch.vue';
 import AppModal from '@/Components/AppModal.vue';
 import AppEmptyState from '@/Components/AppEmptyState.vue';
 import ModifiersEditor from '@/Components/ModifiersEditor.vue';
+import PlanUsageBadge from '@/Components/PlanUsageBadge.vue';
 import { formatCurrency } from '@/Utils/formatters';
 
 defineOptions({ layout: AdminLayout });
@@ -18,6 +19,13 @@ defineOptions({ layout: AdminLayout });
 const props = defineProps({
     categories: Array,
     menuSource: { type: String, default: 'internal' },
+});
+
+const page = usePage();
+const menuItemUsage = computed(() => page.props.plan_usage?.menu_items);
+const menuItemAtLimit = computed(() => {
+    const u = menuItemUsage.value;
+    return u && !u.unlimited && u.limit && u.used >= u.limit;
 });
 
 const isExternal = props.menuSource === 'external';
@@ -194,6 +202,37 @@ function itemPriceDisplay(item) {
 function clearSearch() {
     searchQuery.value = '';
 }
+
+// ── Image upload ───────────────────────────────────────────────────
+const imageUploading = ref(false);
+
+function uploadItemImage(event) {
+    if (!editingItem.value) return;
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const form = new FormData();
+    form.append('image', file);
+    imageUploading.value = true;
+
+    router.post(`/menu/items/${editingItem.value.id}/image`, form, {
+        preserveScroll: true,
+        onSuccess: () => {
+            imageUploading.value = false;
+        },
+        onError: () => {
+            imageUploading.value = false;
+        },
+    });
+    event.target.value = '';
+}
+
+function deleteItemImage() {
+    if (!editingItem.value) return;
+    router.delete(`/menu/items/${editingItem.value.id}/image`, {
+        preserveScroll: true,
+    });
+}
 </script>
 
 <template>
@@ -222,6 +261,13 @@ function clearSearch() {
             <span class="inline-flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg ring-1 ring-gray-200">
                 {{ totalItems }} {{ totalItems === 1 ? 'item' : 'items' }}
             </span>
+            <PlanUsageBadge
+                v-if="menuItemUsage"
+                :used="menuItemUsage.used"
+                :limit="menuItemUsage.limit"
+                :unlimited="menuItemUsage.unlimited"
+                label="Items del menu"
+            />
             <span v-if="itemsWithVariants > 0" class="inline-flex items-center gap-1.5 bg-blue-50 px-3 py-1.5 rounded-lg ring-1 ring-blue-200 text-blue-700">
                 <Layers class="w-3.5 h-3.5" />
                 {{ itemsWithVariants }} con variantes
@@ -303,11 +349,20 @@ function clearSearch() {
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="text-sm text-gray-400">{{ category.items?.length || 0 }} items</span>
-                            <button v-if="!isExternal" @click.stop="openAddItem(category.id)"
-                                    class="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1 transition-colors">
-                                <Plus class="w-3.5 h-3.5" />
-                                Item
-                            </button>
+                            <div v-if="!isExternal" class="relative group/add">
+                                <button @click.stop="!menuItemAtLimit && openAddItem(category.id)"
+                                        class="text-sm font-medium flex items-center gap-1 transition-colors"
+                                        :class="menuItemAtLimit
+                                            ? 'text-gray-400 cursor-not-allowed'
+                                            : 'text-primary-600 hover:text-primary-700'">
+                                    <Plus class="w-3.5 h-3.5" />
+                                    Item
+                                </button>
+                                <div v-if="menuItemAtLimit"
+                                     class="absolute right-0 top-full mt-2 w-56 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover/add:opacity-100 transition-opacity z-50 pointer-events-none">
+                                    Limite de items alcanzado. Actualiza tu plan para agregar mas.
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </template>
@@ -331,7 +386,7 @@ function clearSearch() {
                             <div class="flex flex-col sm:flex-row sm:items-start gap-3">
 
                                 <!-- Thumbnail for external items with image -->
-                                <div v-if="isExternal && item.image_url"
+                                <div v-if="item.image_url"
                                      class="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 shrink-0 ring-1 ring-gray-200">
                                     <img :src="item.image_url" :alt="item.name"
                                          class="w-full h-full object-cover"
@@ -407,6 +462,32 @@ function clearSearch() {
                 <AppInput v-model="itemForm.price" label="Precio base" type="number" step="0.01" min="0"
                           placeholder="0.00" required
                           :hint="hasVariants ? 'El precio sera determinado por las variantes seleccionadas' : ''" />
+
+                <!-- Image upload (only when editing an existing item) -->
+                <div v-if="isEditing" class="border-t border-gray-100 pt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Imagen del item</label>
+
+                    <!-- Current image preview -->
+                    <div v-if="editingItem?.image_url" class="flex items-center gap-3 mb-3 bg-gray-50 rounded-lg p-3">
+                        <img :src="editingItem.image_url" :alt="editingItem.name"
+                             class="h-16 w-16 object-cover rounded-lg ring-1 ring-gray-200" />
+                        <span class="text-sm text-gray-600 flex-1">Imagen actual</span>
+                        <button type="button" @click="deleteItemImage"
+                                class="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-medium transition-colors">
+                            <Trash2 class="w-3.5 h-3.5" />
+                            Eliminar
+                        </button>
+                    </div>
+
+                    <!-- Upload button -->
+                    <label class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer transition-colors">
+                        <Upload class="w-4 h-4 text-gray-600" />
+                        <span class="text-sm text-gray-700">{{ imageUploading ? 'Subiendo...' : (editingItem?.image_url ? 'Cambiar imagen' : 'Subir imagen') }}</span>
+                        <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden"
+                               @change="uploadItemImage" :disabled="imageUploading" />
+                    </label>
+                    <p class="text-xs text-gray-400 mt-1">JPG, PNG o WebP. Max 2MB.</p>
+                </div>
 
                 <div class="border-t border-gray-100 pt-4">
                     <ModifiersEditor v-model="itemForm.modifiers" />

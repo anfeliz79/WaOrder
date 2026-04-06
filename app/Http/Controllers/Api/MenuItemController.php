@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\MenuItem;
 use App\Services\Subscription\PlanEnforcement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 class MenuItemController extends Controller
 {
@@ -62,6 +64,9 @@ class MenuItemController extends Controller
 
         MenuItem::create($data);
 
+        Cache::forget('setup_alerts_' . app('tenant')->id);
+        Cache::forget('plan_usage_' . app('tenant')->id);
+
         return back()->with('success', 'Item creado');
     }
 
@@ -114,6 +119,45 @@ class MenuItemController extends Controller
     {
         $item->update(['is_active' => false]);
 
+        Cache::forget('setup_alerts_' . app('tenant')->id);
+        Cache::forget('plan_usage_' . app('tenant')->id);
+
         return response()->json(['success' => true]);
+    }
+
+    public function uploadImage(Request $request, MenuItem $item)
+    {
+        $request->validate([
+            'image' => 'required|file|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        $tenant = app('tenant');
+
+        if ($item->image_path && Storage::disk('public')->exists($item->image_path)) {
+            Storage::disk('public')->delete($item->image_path);
+        }
+
+        $path = $request->file('image')->store("menu/tenant-{$tenant->id}", 'public');
+
+        $item->update([
+            'image_url' => Storage::disk('public')->url($path),
+            'image_path' => $path,
+        ]);
+
+        return back()->with('success', 'Imagen actualizada');
+    }
+
+    public function deleteImage(MenuItem $item)
+    {
+        if ($item->image_path && Storage::disk('public')->exists($item->image_path)) {
+            Storage::disk('public')->delete($item->image_path);
+        }
+
+        $item->update([
+            'image_url' => null,
+            'image_path' => null,
+        ]);
+
+        return back()->with('success', 'Imagen eliminada');
     }
 }

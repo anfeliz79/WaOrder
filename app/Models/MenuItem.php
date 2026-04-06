@@ -12,7 +12,7 @@ class MenuItem extends Model
 
     protected $fillable = [
         'tenant_id', 'category_id', 'name', 'description', 'price',
-        'image_url', 'is_available', 'is_active', 'modifiers', 'sort_order',
+        'image_url', 'image_path', 'is_available', 'is_active', 'modifiers', 'sort_order',
     ];
 
     protected $casts = [

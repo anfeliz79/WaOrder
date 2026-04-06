@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MenuCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class MenuCategoryController extends Controller
 {
@@ -27,6 +28,8 @@ class MenuCategoryController extends Controller
 
         $category = MenuCategory::create($data);
 
+        Cache::forget('setup_alerts_' . app('tenant')->id);
+
         return back()->with('success', 'Categoria creada');
     }
 
@@ -47,6 +50,8 @@ class MenuCategoryController extends Controller
     public function destroy(MenuCategory $category)
     {
         $category->update(['is_active' => false]);
+
+        Cache::forget('setup_alerts_' . app('tenant')->id);
 
         return response()->json(['success' => true]);
     }
