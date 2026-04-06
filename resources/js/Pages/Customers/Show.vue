@@ -1,12 +1,12 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { ref, computed } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, router, useForm } from '@inertiajs/vue3';
 import {
     ArrowLeft, ShoppingBag, DollarSign, Star, TrendingUp,
     ChevronDown, ChevronUp, MapPin, Phone, Calendar,
     MessageSquare, ClipboardList, BarChart3, Clock,
-    Package, CreditCard, Utensils,
+    Package, CreditCard, Utensils, ShieldBan, ShieldCheck, X,
 } from 'lucide-vue-next';
 import AppCard from '@/Components/AppCard.vue';
 import AppBadge from '@/Components/AppBadge.vue';
@@ -120,6 +120,28 @@ const stateLabel = (state) => {
     };
     return map[state] || state || 'Desconocido';
 };
+
+// Block/Unblock
+const blockModal = ref(false);
+const blockForm = useForm({ blocked_reason: '' });
+
+const openBlockModal = () => {
+    blockForm.blocked_reason = '';
+    blockModal.value = true;
+};
+
+const confirmBlock = () => {
+    blockForm.post(`/customers/${props.customer.id}/toggle-block`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            blockModal.value = false;
+        },
+    });
+};
+
+const unblockCustomer = () => {
+    router.post(`/customers/${props.customer.id}/toggle-block`, {}, { preserveScroll: true });
+};
 </script>
 
 <template>
@@ -131,13 +153,31 @@ const stateLabel = (state) => {
                 Volver a clientes
             </Link>
 
+            <!-- Blocked banner -->
+            <div v-if="customer.is_blocked" class="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <ShieldBan class="w-5 h-5 text-red-600 shrink-0" />
+                    <div>
+                        <p class="text-sm font-medium text-red-800">Cliente bloqueado</p>
+                        <p v-if="customer.blocked_reason" class="text-xs text-red-600 mt-0.5">Razon: {{ customer.blocked_reason }}</p>
+                    </div>
+                </div>
+                <button @click="unblockCustomer"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors">
+                    <ShieldCheck class="w-3.5 h-3.5" />
+                    Desbloquear
+                </button>
+            </div>
+
             <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                <div class="w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold shrink-0 ring-2 ring-primary-500/20"
-                     :class="getAvatarColor(customer.name)">
+                <div class="w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold shrink-0 ring-2"
+                     :class="customer.is_blocked ? 'bg-red-100 text-red-700 ring-red-500/20' : [getAvatarColor(customer.name), 'ring-primary-500/20']">
                     {{ getInitials(customer.name) }}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <h1 class="text-2xl font-bold text-gray-900">{{ customer.name || 'Sin nombre' }}</h1>
+                    <h1 class="text-2xl font-bold" :class="customer.is_blocked ? 'text-red-700' : 'text-gray-900'">
+                        {{ customer.name || 'Sin nombre' }}
+                    </h1>
                     <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
                         <span class="flex items-center gap-1">
                             <Phone class="w-3.5 h-3.5" />
@@ -153,10 +193,18 @@ const stateLabel = (state) => {
                         </span>
                     </div>
                 </div>
-                <div v-if="customer.default_delivery_type" class="shrink-0">
-                    <AppBadge :variant="customer.default_delivery_type === 'delivery' ? 'violet' : 'blue'" size="sm">
-                        {{ customer.default_delivery_type === 'delivery' ? 'Delivery' : 'Pickup' }}
-                    </AppBadge>
+                <div class="flex items-center gap-2 shrink-0">
+                    <div v-if="customer.default_delivery_type">
+                        <AppBadge :variant="customer.default_delivery_type === 'delivery' ? 'violet' : 'blue'" size="sm">
+                            {{ customer.default_delivery_type === 'delivery' ? 'Delivery' : 'Pickup' }}
+                        </AppBadge>
+                    </div>
+                    <button v-if="!customer.is_blocked"
+                            @click="openBlockModal"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors">
+                        <ShieldBan class="w-3.5 h-3.5" />
+                        Bloquear
+                    </button>
                 </div>
             </div>
         </div>

@@ -23,6 +23,10 @@ class CustomerController extends Controller
             });
         }
 
+        if ($request->filled('blocked')) {
+            $query->where('is_blocked', true);
+        }
+
         $customers = $query->paginate(25);
 
         if ($request->wantsJson()) {
@@ -31,8 +35,26 @@ class CustomerController extends Controller
 
         return Inertia::render('Customers/Index', [
             'customers' => $customers,
-            'filters' => $request->only('search'),
+            'filters' => $request->only('search', 'blocked'),
         ]);
+    }
+
+    public function toggleBlock(Request $request, Customer $customer)
+    {
+        $data = $request->validate([
+            'blocked_reason' => 'nullable|string|max:255',
+        ]);
+
+        $wasBlocked = $customer->is_blocked;
+
+        $customer->update([
+            'is_blocked' => !$wasBlocked,
+            'blocked_reason' => $wasBlocked ? null : ($data['blocked_reason'] ?? null),
+        ]);
+
+        $action = $customer->is_blocked ? 'bloqueado' : 'desbloqueado';
+
+        return back()->with('success', "Cliente {$action} exitosamente.");
     }
 
     public function show(Request $request, Customer $customer)

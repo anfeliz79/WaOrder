@@ -12,11 +12,13 @@ class Customer extends Model
 
     protected $fillable = [
         'tenant_id', 'phone', 'name', 'default_address',
-        'default_delivery_type', 'total_orders', 'total_spent', 'last_order_at',
+        'default_delivery_type', 'total_orders', 'total_spent',
+        'is_blocked', 'blocked_reason', 'last_order_at',
     ];
 
     protected $casts = [
         'total_spent' => 'decimal:2',
+        'is_blocked' => 'boolean',
         'last_order_at' => 'datetime',
     ];
 
