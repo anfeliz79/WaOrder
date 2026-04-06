@@ -57,6 +57,7 @@ class InternalMenuSource implements MenuSourceInterface
             'price' => (float) $item->price,
             'is_available' => $item->is_available,
             'modifiers' => $item->modifiers ?? [],
+            'image_url' => $item->image_url,
             'category_name' => $item->category?->name,
         ];
     }

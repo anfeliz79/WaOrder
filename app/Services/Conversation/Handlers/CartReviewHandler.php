@@ -3,7 +3,6 @@
 namespace App\Services\Conversation\Handlers;
 
 use App\Models\ChatSession;
-use App\Services\Menu\MenuService;
 use App\Services\Menu\MenuTokenService;
 use App\Services\WhatsApp\MessageFactory;
 
@@ -46,52 +45,21 @@ class CartReviewHandler implements HandlerInterface
         // Option 1: Add more (button ID or text)
         if (in_array($message, ['cart_add', 'agregar', 'mas', 'agregar mas', 'agregar mas productos'])) {
             $tenant = app('tenant');
-
-            // For external menus, send web menu link instead of category list
-            if ($tenant->getMenuSource() === 'external') {
-                $tokenService = app(MenuTokenService::class);
-                $token = $tokenService->generateMenuToken(
-                    $tenant->id,
-                    $session->id,
-                    $session->customer_phone,
-                );
-                $menuUrl = $tokenService->buildMenuUrl($token);
-
-                return [
-                    'response' => '¡Claro! Agrega más productos desde el menú:',
-                    'response_type' => 'cta_url',
-                    'cta_body' => '🍽️ ¡Agrega más productos a tu pedido!',
-                    'cta_button_text' => 'Ver menú',
-                    'cta_url' => $menuUrl,
-                    'context_data' => array_merge($session->context_data ?? [], ['web_menu_token' => $token]),
-                ];
-            }
-
-            $menuService = app(MenuService::class);
-            $categories = $menuService->getCategories();
-
-            if (empty($categories)) {
-                return [
-                    'response' => 'El menú no está disponible en este momento. Intenta de nuevo en unos minutos.',
-                    'response_type' => 'text',
-                ];
-            }
-
-            $rows = [];
-            foreach ($categories as $cat) {
-                $rows[] = [
-                    'id' => 'cat_' . $cat['id'],
-                    'title' => substr($cat['name'], 0, 24),
-                    'description' => isset($cat['description']) ? substr($cat['description'], 0, 72) : '',
-                ];
-            }
+            $tokenService = app(MenuTokenService::class);
+            $token = $tokenService->generateMenuToken(
+                $tenant->id,
+                $session->id,
+                $session->customer_phone,
+            );
+            $menuUrl = $tokenService->buildMenuUrl($token);
 
             return [
-                'response' => '🍽️ Elige una categoría para agregar más productos:',
-                'response_type' => 'list',
-                'list_button_text' => 'Ver categorías',
-                'list_sections' => [['title' => 'Categorías', 'rows' => $rows]],
-                'next_state' => 'menu_browsing',
+                'response' => '¡Claro! Agrega más productos desde el menú:',
+                'response_type' => 'cta_url',
+                'cta_body' => '🍽️ ¡Agrega más productos a tu pedido!',
+                'cta_button_text' => 'Ver menú',
+                'cta_url' => $menuUrl,
+                'context_data' => array_merge($session->context_data ?? [], ['web_menu_token' => $token]),
             ];
         }
 

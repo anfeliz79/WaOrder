@@ -26,10 +26,7 @@ class MenuBrowsingHandler implements HandlerInterface
         // Handle button replies from greeting
         if (in_array($lower, ['opt_menu', 'opt_order', 'ver el menu', 'hacer un pedido', 'hacer mi pedido', 'pedir'])) {
             $tenant = app('tenant');
-            if ($tenant->getMenuSource() === 'external') {
-                return $this->showWebMenuLink($session, $tenant);
-            }
-            return $this->showCategoriesList($menuService, $session);
+            return $this->showWebMenuLink($session, $tenant);
         }
 
         // Handle "Llamar al local" button from greeting
@@ -76,10 +73,7 @@ class MenuBrowsingHandler implements HandlerInterface
         }
 
         $tenant = app('tenant');
-        if ($tenant->getMenuSource() === 'external') {
-            return $this->showWebMenuLink($session, $tenant);
-        }
-        return $this->showCategoriesList($menuService, $session);
+        return $this->showWebMenuLink($session, $tenant);
     }
 
     private function handleCallRestaurant(): array
